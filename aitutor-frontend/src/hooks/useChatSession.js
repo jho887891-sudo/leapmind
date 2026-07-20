@@ -75,23 +75,25 @@ export function useChatSession({ sceneType, context, userId, autoRestore = true 
   const processChunk = useCallback((chunk) => {
     if (chunk.type === 'content' && chunk.chunk) {
       bufferRef.current += chunk.chunk;
+      const captured = bufferRef.current; // ⚠️ 捕获快照，setMessages updater 异步执行时 ref 可能已被改
       setMessages(prev => {
         const copy = [...prev];
         const last = copy[copy.length - 1];
         if (last && last.isStreaming) {
-          copy[copy.length - 1] = { ...last, content: bufferRef.current };
+          copy[copy.length - 1] = { ...last, content: captured };
         }
         return copy;
       });
     } else if (chunk.type === 'done') {
       // 标记流式结束
+      const captured = bufferRef.current; // ⚠️ 必须捕获！下面立即清空 ref
       isGeneratingRef.current = false;
       setIsGenerating(false);
       setMessages(prev => {
         const copy = [...prev];
         const last = copy[copy.length - 1];
         if (last && last.isStreaming) {
-          copy[copy.length - 1] = { role: 'assistant', content: bufferRef.current };
+          copy[copy.length - 1] = { role: 'assistant', content: captured };
         }
         return copy;
       });
@@ -154,14 +156,15 @@ export function useChatSession({ sceneType, context, userId, autoRestore = true 
             setError(value.message || '生成失败');
             isGeneratingRef.current = false;
             setIsGenerating(false);
+            const captured = bufferRef.current; // ⚠️ 捕获快照
             // 移除占位 assistant 消息（内容为空）
             setMessages(prev => {
               const copy = [...prev];
               const last = copy[copy.length - 1];
-              if (last && last.isStreaming && !bufferRef.current) {
+              if (last && last.isStreaming && !captured) {
                 copy.pop();
               } else if (last && last.isStreaming) {
-                copy[copy.length - 1] = { role: 'assistant', content: bufferRef.current };
+                copy[copy.length - 1] = { role: 'assistant', content: captured };
               }
               return copy;
             });
@@ -174,6 +177,7 @@ export function useChatSession({ sceneType, context, userId, autoRestore = true 
       }).catch((err) => {
         // reader cancel（用户主动打断）走 abort 路径，不会进这里
         // 这里是网络/解析异常
+        const captured = bufferRef.current; // ⚠️ 捕获快照
         isGeneratingRef.current = false;
         setIsGenerating(false);
         setError(err?.message || '连接异常，请重试');
@@ -184,7 +188,7 @@ export function useChatSession({ sceneType, context, userId, autoRestore = true 
           if (last && last.isStreaming) {
             copy[copy.length - 1] = {
               role: 'assistant',
-              content: bufferRef.current || '生成失败',
+              content: captured || '生成失败',
               error: true,
             };
           }
@@ -208,6 +212,7 @@ export function useChatSession({ sceneType, context, userId, autoRestore = true 
       interrupt(sessionId).catch(() => { /* ignore */ });
     }
     // 保留已生成内容，去掉 streaming 标记
+    const captured = bufferRef.current; // ⚠️ 捕获快照
     isGeneratingRef.current = false;
     setIsGenerating(false);
     setMessages(prev => {
@@ -216,7 +221,7 @@ export function useChatSession({ sceneType, context, userId, autoRestore = true 
       if (last && last.isStreaming) {
         copy[copy.length - 1] = {
           role: 'assistant',
-          content: (bufferRef.current || '生成已中断'),
+          content: (captured || '生成已中断'),
         };
       }
       return copy;
