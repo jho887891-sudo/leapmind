@@ -7,8 +7,10 @@ import LecturePage from './pages/LecturePage';
 import LecturePage2 from './pages/LecturePage2';
 import TemHomePage from './pages/TemHomePage';
 import ProfilePage from './pages/ProfilePage.jsx';
+import LearningProfilePage from './pages/LearningProfilePage.jsx';
+import KnowledgePointDetailPage from './pages/KnowledgePointDetailPage.jsx';
 import { hasValidToken } from './utils/tokenManager';
-import { checkAuth, logout } from './services/authService';
+import { checkAuth } from './services/authService';
 
 export default function App() {
     const [isChecking, setIsChecking] = useState(true);
@@ -16,6 +18,8 @@ export default function App() {
     const [currentCourseId, setCurrentCourseId] = useState('');
     const [guestRoute, setGuestRoute] = useState('home'); // home | profile
     const [showProfile, setShowProfile] = useState(false);
+    const [learningProfileView, setLearningProfileView] = useState(null); // null | overview | detail
+    const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState(null);
 
     useEffect(() => {
         const checkSession = async () => {
@@ -40,13 +44,6 @@ export default function App() {
         checkSession();
     }, []);
 
-    const handleLogout = () => {
-        logout();
-        setCurrentCourseId('');
-        setIsAuthed(false);
-        window.location.reload();
-    };
-
     const handleLoginSuccess = (user) => {
         console.log('登录成功，用户信息:', user);
         setIsAuthed(true);
@@ -54,6 +51,18 @@ export default function App() {
 
     const handleOpenProfile = () => {
         setShowProfile(true);
+    };
+
+    const handleOpenLearningProfile = () => {
+        setSelectedKnowledgePointId(null);
+        setLearningProfileView('overview');
+    };
+
+    const handleOpenKnowledgePoint = (knowledgePoint) => {
+        const id = typeof knowledgePoint === 'object' ? knowledgePoint?.id : knowledgePoint;
+        if (!id) return;
+        setSelectedKnowledgePointId(id);
+        setLearningProfileView('detail');
     };
 
     return (
@@ -70,6 +79,17 @@ export default function App() {
                 )
             ) : currentCourseId ? (
                       <LecturePage2 courseId={currentCourseId} onBack={() => setCurrentCourseId('')} />
+            ) : learningProfileView === 'detail' ? (
+                <KnowledgePointDetailPage
+                    knowledgePointId={selectedKnowledgePointId}
+                    onBack={() => setLearningProfileView('overview')}
+                    onHome={() => setLearningProfileView('overview')}
+                />
+            ) : learningProfileView === 'overview' ? (
+                <LearningProfilePage
+                    onBack={() => setLearningProfileView(null)}
+                    onOpenKnowledgePoint={handleOpenKnowledgePoint}
+                />
             ) : (
                 showProfile ? (
                     <ProfilePage onBack={() => setShowProfile(false)} />
@@ -77,6 +97,7 @@ export default function App() {
                     <TemHomePage 
                         onEnterProject={(courseId) => setCurrentCourseId(courseId)}
                         onOpenProfile={handleOpenProfile}
+                        onOpenLearningProfile={handleOpenLearningProfile}
                     />
                 )
             )}
