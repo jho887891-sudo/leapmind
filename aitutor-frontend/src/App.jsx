@@ -10,8 +10,10 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import PhotoQAPage from './pages/m2/PhotoQAPage';
 import ExplainPage from './pages/m2/ExplainPage';
 import ExplainHistoryPage from './pages/m2/ExplainHistoryPage';
+import LearningProfilePage from './pages/LearningProfilePage.jsx';
+import KnowledgePointDetailPage from './pages/KnowledgePointDetailPage.jsx';
 import { hasValidToken } from './utils/tokenManager';
-import { checkAuth, logout } from './services/authService';
+import { checkAuth } from './services/authService';
 
 export default function App() {
     const [isChecking, setIsChecking] = useState(true);
@@ -21,6 +23,8 @@ export default function App() {
     const [showProfile, setShowProfile] = useState(false);
     const [m2Page, setM2Page] = useState(null); // null | 'photo-qa' | 'explain' | 'explain-history'
     const [m2Params, setM2Params] = useState({}); // 传递给 M2 页面的参数
+    const [learningProfileView, setLearningProfileView] = useState(null); // null | overview | detail
+    const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState(null);
 
     useEffect(() => {
         const checkSession = async () => {
@@ -45,13 +49,6 @@ export default function App() {
         checkSession();
     }, []);
 
-    const handleLogout = () => {
-        logout();
-        setCurrentCourseId('');
-        setIsAuthed(false);
-        window.location.reload();
-    };
-
     const handleLoginSuccess = (user) => {
         console.log('登录成功，用户信息:', user);
         setIsAuthed(true);
@@ -59,6 +56,18 @@ export default function App() {
 
     const handleOpenProfile = () => {
         setShowProfile(true);
+    };
+
+    const handleOpenLearningProfile = () => {
+        setSelectedKnowledgePointId(null);
+        setLearningProfileView('overview');
+    };
+
+    const handleOpenKnowledgePoint = (knowledgePoint) => {
+        const id = typeof knowledgePoint === 'object' ? knowledgePoint?.id : knowledgePoint;
+        if (!id) return;
+        setSelectedKnowledgePointId(id);
+        setLearningProfileView('detail');
     };
 
     return (
@@ -90,6 +99,17 @@ export default function App() {
                 <ExplainHistoryPage onBack={m2Params.from === 'explain' ? () => { setM2Params({}); setM2Page('explain'); } : () => setM2Page(null)} onReplay={(id) => { setM2Params({ replayId: id, from: 'explain-history' }); setM2Page('explain'); }} />
             ) : currentCourseId ? (
                       <LecturePage2 courseId={currentCourseId} onBack={() => setCurrentCourseId('')} />
+            ) : learningProfileView === 'detail' ? (
+                <KnowledgePointDetailPage
+                    knowledgePointId={selectedKnowledgePointId}
+                    onBack={() => setLearningProfileView('overview')}
+                    onHome={() => setLearningProfileView('overview')}
+                />
+            ) : learningProfileView === 'overview' ? (
+                <LearningProfilePage
+                    onBack={() => setLearningProfileView(null)}
+                    onOpenKnowledgePoint={handleOpenKnowledgePoint}
+                />
             ) : (
                 showProfile ? (
                     <ProfilePage onBack={() => setShowProfile(false)} />
@@ -99,6 +119,7 @@ export default function App() {
                         onOpenProfile={handleOpenProfile}
                         onM2PhotoQa={() => setM2Page('photo-qa')}
                         onM2Explain={() => { setM2Params({}); setM2Page('explain'); }}
+                        onOpenLearningProfile={handleOpenLearningProfile}
                     />
                 )
             )}
