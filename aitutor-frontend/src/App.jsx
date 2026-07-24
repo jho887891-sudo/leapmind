@@ -7,6 +7,7 @@ import LecturePage from './pages/LecturePage';
 import LecturePage2 from './pages/LecturePage2';
 import TemHomePage from './pages/TemHomePage';
 import ProfilePage from './pages/ProfilePage.jsx';
+import PhotoQAPage from './pages/m2/PhotoQAPage';
 import { hasValidToken } from './utils/tokenManager';
 import { checkAuth, logout } from './services/authService';
 
@@ -16,6 +17,7 @@ export default function App() {
     const [currentCourseId, setCurrentCourseId] = useState('');
     const [guestRoute, setGuestRoute] = useState('home'); // home | profile
     const [showProfile, setShowProfile] = useState(false);
+    const [m2Page, setM2Page] = useState(null); // null | 'photo-qa' | 'explain' | 'explain-history'
 
     useEffect(() => {
         const checkSession = async () => {
@@ -65,9 +67,20 @@ export default function App() {
                 guestRoute === 'profile' ? (
                     <ProfilePage onBack={() => setGuestRoute('home')} />
                 ) : (
-                    // 使用登录页面
-                    <LoginPage2 onLoginSuccess={handleLoginSuccess} />
+                    <div className="relative w-full h-full">
+                        <LoginPage2 onLoginSuccess={handleLoginSuccess} />
+                        {import.meta.env.DEV && (
+                            <button
+                                onClick={() => { setIsAuthed(true); console.log('开发模式：已跳过登录') }}
+                                className="fixed top-4 right-4 z-50 px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-700 shadow"
+                            >
+                                🚀 跳过登录（开发模式）
+                            </button>
+                        )}
+                    </div>
                 )
+            ) : m2Page === 'photo-qa' ? (
+                <PhotoQAPage onBack={() => setM2Page(null)} />
             ) : currentCourseId ? (
                       <LecturePage2 courseId={currentCourseId} onBack={() => setCurrentCourseId('')} />
             ) : (
@@ -77,6 +90,7 @@ export default function App() {
                     <TemHomePage 
                         onEnterProject={(courseId) => setCurrentCourseId(courseId)}
                         onOpenProfile={handleOpenProfile}
+                        onM2PhotoQa={() => setM2Page('photo-qa')}
                     />
                 )
             )}
