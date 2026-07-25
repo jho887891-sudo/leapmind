@@ -41,7 +41,7 @@ const STEP_LABELS = [
   { title: '总结' }
 ]
 
-function QuestionCard({ question, expanded, onToggle }) {
+function QuestionCard({ question, expanded, onToggle, onKnowledgePointClick }) {
   const q = question?.questionContent || {}
   const isChoice = q.type === 'single_choice' || q.type === 'multi_choice'
 
@@ -83,9 +83,14 @@ function QuestionCard({ question, expanded, onToggle }) {
           {question?.knowledgePoints && (
             <div className="flex flex-wrap gap-1.5">
               {question.knowledgePoints.map(kp => (
-                <span key={kp.id} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-400/15">
+                <button
+                  key={kp.id}
+                  onClick={(e) => { e.stopPropagation(); onKnowledgePointClick?.(kp); }}
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-400/20 hover:from-amber-500/30 hover:to-orange-500/30 hover:border-amber-300/40 transition-all cursor-pointer font-medium"
+                  title="查看知识点详情"
+                >
                   {kp.name}
-                </span>
+                </button>
               ))}
             </div>
           )}
@@ -110,6 +115,14 @@ export default function ExplainPage({ onBack }) {
   const [similar, setSimilar] = useState('')
 
   const [feedback, setFeedback] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 2000)
+      return () => clearTimeout(t)
+    }
+  }, [toast])
 
   useEffect(() => {
     const loadQuestions = async () => {
@@ -259,6 +272,9 @@ export default function ExplainPage({ onBack }) {
                   question={selectedQuestion}
                   expanded={questionExpanded}
                   onToggle={() => setQuestionExpanded(!questionExpanded)}
+                  onKnowledgePointClick={(kp) => {
+                    setToast(`"${kp.name}" 知识图谱（即将开放）`)
+                  }}
                 />
 
                 {generating && explainSteps.length === 0 && (
@@ -378,6 +394,11 @@ export default function ExplainPage({ onBack }) {
                       重新讲解
                     </button>
 
+                    <button className="w-full py-2.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-400/20 rounded-xl text-sm text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 hover:border-amber-300/40 transition-all flex items-center justify-center gap-2 font-medium">
+                      <BookOpen className="w-4 h-4" />
+                      同类题练习
+                    </button>
+
                     <AskMoreButton questionContext={selectedQuestion} />
                   </div>
                 )}
@@ -386,6 +407,13 @@ export default function ExplainPage({ onBack }) {
           </div>
         </div>
       </div>
+      {toast && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-gradient-to-br from-[#7B5ADB] via-[#6B47D0] to-[#4E7FDB] text-white px-8 py-5 rounded-full shadow-2xl border-2 border-purple-300/50 backdrop-blur-md font-bold text-base text-center max-w-xs">
+            ✨ {toast}
+          </div>
+        </div>
+      )}
     </>
   )
 }

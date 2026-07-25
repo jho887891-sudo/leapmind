@@ -45,9 +45,9 @@ export default function ExplainContent({ steps, currentStep, loading }) {
           remarkPlugins={[remarkMath]}
           rehypePlugins={[rehypeKatex]}
           components={{
-            strong: ({ children }) => <span className="text-purple-300 font-bold">{children}</span>,
+            strong: ({ children }) => <span className="text-amber-300 font-bold bg-amber-500/10 px-0.5 rounded">{children}</span>,
             p: ({ children }) => <p className="text-white/80 leading-relaxed mb-2">{children}</p>,
-            code: ({ children }) => <code className="bg-white/10 text-purple-200 px-1.5 py-0.5 rounded text-sm">{children}</code>,
+            code: ({ children }) => <code className="bg-white/10 text-cyan-200 px-1.5 py-0.5 rounded text-sm">{children}</code>,
           }}
         >
           {step.content}
