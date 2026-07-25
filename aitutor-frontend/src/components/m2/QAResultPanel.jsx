@@ -5,6 +5,8 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 import { Sparkles, ThumbsUp, HelpCircle, BookOpen, BookmarkPlus, BookmarkCheck, Send } from 'lucide-react'
 import { mockPhotoQA, mockAddToWrongBook } from '../../services/m2'
+import { useChatSession } from '../../hooks/useChatSession'
+import { getUserInfo } from '../../utils/tokenManager'
 
 export default function QAResultPanel({ ocrRecordId, question, onKnowledgePointClick }) {
   const [content, setContent] = useState('')
@@ -15,8 +17,14 @@ export default function QAResultPanel({ ocrRecordId, question, onKnowledgePointC
   const [inWrongBook, setInWrongBook] = useState(false)
   const [addingToWrong, setAddingToWrong] = useState(false)
   const [followUp, setFollowUp] = useState('')
-  const [followUpMsgs, setFollowUpMsgs] = useState([])
-  const [followUpLoading, setFollowUpLoading] = useState(false)
+
+  const userId = getUserInfo()?.userId || 1
+  const { messages: followUpMsgs, isGenerating: followUpLoading, send: sendFollowUp } = useChatSession({
+    sceneType: 'doing_exercise',
+    context: { questionId: ocrRecordId },
+    userId,
+    autoRestore: false,
+  })
 
   const handleGenerate = async () => {
     setLoading(true)
@@ -62,18 +70,10 @@ export default function QAResultPanel({ ocrRecordId, question, onKnowledgePointC
     setAddingToWrong(false)
   }
 
-  const handleFollowUp = async () => {
-    if (!followUp.trim()) return
-    const msg = followUp.trim()
-    setFollowUpMsgs(prev => [...prev, { role: 'user', content: msg }])
+  const handleFollowUp = () => {
+    if (!followUp.trim() || followUpLoading) return
+    sendFollowUp(followUp.trim())
     setFollowUp('')
-    setFollowUpLoading(true)
-    await new Promise(r => setTimeout(r, 1000))
-    setFollowUpMsgs(prev => [...prev, {
-      role: 'assistant',
-      content: '这个问题问得很好！我们可以从另一个角度来理解...（M7 对话接口对接后将启用真实回答）'
-    }])
-    setFollowUpLoading(false)
   }
 
   return (
@@ -210,20 +210,16 @@ export default function QAResultPanel({ ocrRecordId, question, onKnowledgePointC
                         : 'bg-white/10 text-white/70'
                     }`}>
                       {msg.content}
+                      {msg.isStreaming && (
+                        <span className="inline-flex gap-0.5 ml-1">
+                          <span className="w-1 h-1 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                          <span className="w-1 h-1 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                          <span className="w-1 h-1 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
-                {followUpLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-white/10 px-2.5 py-1.5 rounded-lg">
-                      <div className="flex gap-1">
-                        {[0,1,2].map(i => (
-                          <div key={i} className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
             <div className="flex items-center gap-2 px-3 py-2">

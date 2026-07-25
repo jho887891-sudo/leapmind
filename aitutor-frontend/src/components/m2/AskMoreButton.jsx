@@ -1,26 +1,28 @@
 import { useState } from 'react'
-import { Send, MessageCircle, X } from 'lucide-react'
+import { Send, MessageCircle, X, AlertCircle } from 'lucide-react'
+import { useChatSession } from '../../hooks/useChatSession'
+import { getUserInfo } from '../../utils/tokenManager'
 
 export default function AskMoreButton({ questionContext }) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
-  const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async () => {
-    if (!input.trim()) return
-    const userMsg = input.trim()
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }])
+  const userId = getUserInfo()?.userId || 1
+  const context = questionContext
+    ? { questionId: questionContext.questionId || questionContext.id, relatedKpId: questionContext.knowledgePoints?.[0]?.id }
+    : {}
+
+  const { messages, isGenerating, error, send, clear } = useChatSession({
+    sceneType: 'explaining',
+    context,
+    userId,
+    autoRestore: false,
+  })
+
+  const handleSubmit = () => {
+    if (!input.trim() || isGenerating) return
+    send(input.trim())
     setInput('')
-    setLoading(true)
-
-    // Mock AI 回答
-    await new Promise(r => setTimeout(r, 1000))
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: '这是个很好的问题！让我们进一步分析一下...（M7 对话接口对接后将启用真实回答）'
-    }])
-    setLoading(false)
   }
 
   const handleKeyDown = (e) => {
@@ -47,10 +49,22 @@ export default function AskMoreButton({ questionContext }) {
               <MessageCircle className="w-4 h-4 text-purple-300" />
               追问
             </span>
-            <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white/70 transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {messages.length > 0 && (
+                <button onClick={clear} className="text-[10px] text-white/30 hover:text-white/60 transition-colors">清空</button>
+              )}
+              <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white/70 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+
+          {error && (
+            <div className="px-4 py-2 bg-red-500/10 border-b border-red-400/10 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3 text-red-300" />
+              <span className="text-[11px] text-red-200/80">{error}</span>
+            </div>
+          )}
 
           {messages.length > 0 && (
             <div className="px-4 py-3 max-h-40 overflow-y-auto space-y-2">
@@ -60,24 +74,22 @@ export default function AskMoreButton({ questionContext }) {
                     className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
                       msg.role === 'user'
                         ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                        : 'bg-white/10 text-white/70'
+                        : msg.error
+                          ? 'bg-red-500/10 text-red-200/80 border border-red-400/10'
+                          : 'bg-white/10 text-white/70'
                     }`}
                   >
-                    {msg.content}
+                    {msg.content || (msg.isStreaming ? '' : '生成中断')}
+                    {msg.isStreaming && (
+                      <span className="inline-flex gap-0.5 ml-1">
+                        <span className="w-1 h-1 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                        <span className="w-1 h-1 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
+                        <span className="w-1 h-1 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-white/10 px-3 py-2 rounded-xl">
-                    <div className="flex gap-1">
-                      {[0,1,2].map(i => (
-                        <div key={i} className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -91,8 +103,8 @@ export default function AskMoreButton({ questionContext }) {
             />
             <button
               onClick={handleSubmit}
-              disabled={!input.trim() || loading}
-              className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 text-white flex items-center justify-center disabled:opacity-40 hover:shadow-lg hover:shadow-purple-500/20 transition-all"
+              disabled={!input.trim() || isGenerating}
+              className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 text-white flex items-center justify-center disabled:opacity-40 hover:shadow-lg hover:shadow-purple-500/20 transition-all shrink-0"
             >
               <Send className="w-3.5 h-3.5" />
             </button>
