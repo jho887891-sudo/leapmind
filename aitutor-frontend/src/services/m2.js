@@ -27,8 +27,43 @@ export async function mockRecognizeQuestion(image, subject) {
       type: 'single_choice',
       subject: subject || 'math'
     },
-    confidence: 0.95
+    confidence: 0.95,
+    matchedQuestion: {
+      matched: true,
+      matchDegree: 0.95,
+      questionId: 456,
+      existingExplanation: '勾股定理：a²+b²=c²，3²+4²=25，c=5'
+    }
   }
+}
+
+/**
+ * 题库匹配（Mock）
+ */
+export async function mockMatchQuestion(stem, subject) {
+  await new Promise(r => setTimeout(r, 300))
+  return {
+    matched: true,
+    matchDegree: 0.95,
+    questionId: 456,
+    knowledgePoints: [
+      { id: 10, name: '勾股定理' },
+      { id: 11, name: '平方根运算' }
+    ],
+    similarQuestions: [
+      { id: 457, stem: '直角三角形两直角边分别为5和12，求斜边长。' },
+      { id: 458, stem: '判断边长为3,4,5的三角形是否为直角三角形。' },
+      { id: 459, stem: '等腰直角三角形的直角边为1，求斜边长。' }
+    ]
+  }
+}
+
+/**
+ * 加入错题本（Mock）
+ */
+export async function mockAddToWrongBook(questionId) {
+  await new Promise(r => setTimeout(r, 500))
+  return { success: true, message: '已添加到错题本' }
 }
 
 /**
@@ -75,12 +110,21 @@ export async function mockPhotoQA(ocrRecordId, question, onMessage, onError) {
     { type: 'step', content: '**第一步：识别题型**\n这是一道直角三角形求斜边长的题目。' },
     { type: 'step', content: '**第二步：套用公式**\n根据勾股定理：$a^2 + b^2 = c^2$' },
     { type: 'step', content: '**第三步：代入计算**\n$3^2 + 4^2 = 9 + 16 = 25$，$c = \\sqrt{25} = 5$' },
-    { type: 'knowledge', content: '涉及知识点：勾股定理、平方根运算' },
+    { type: 'knowledge', content: JSON.stringify([
+      { id: 10, name: '勾股定理' },
+      { id: 11, name: '平方根运算' },
+      { id: 12, name: '直角三角形性质' }
+    ])},
+    { type: 'similar', content: JSON.stringify([
+      { id: 457, stem: '直角三角形两直角边分别为5和12，求斜边长。' },
+      { id: 458, stem: '判断边长为3,4,5的三角形是否为直角三角形。' },
+      { id: 459, stem: '等腰直角三角形的直角边为1，求斜边长。' }
+    ])},
     { type: 'done', content: '', contentId: 999 }
   ]
 
   for (const chunk of mockChunks) {
-    await new Promise(r => setTimeout(r, 800))
+    await new Promise(r => setTimeout(r, 600))
     onMessage(chunk)
   }
 }

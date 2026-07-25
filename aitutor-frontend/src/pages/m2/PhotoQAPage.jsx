@@ -1,21 +1,16 @@
-import { useState } from 'react'
-import { ArrowLeft, Camera, Upload, Sparkles, RefreshCw, CheckCircle, HelpCircle } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { ArrowLeft, Camera, Upload, Sparkles, RefreshCw, CheckCircle, HelpCircle, Crop, BookOpen } from 'lucide-react'
 import CameraCapture from '../../components/m2/CameraCapture'
 import ImageUploader from '../../components/m2/ImageUploader'
 import OCRResultCard from '../../components/m2/OCRResultCard'
 import QAResultPanel from '../../components/m2/QAResultPanel'
-import { mockRecognizeQuestion } from '../../services/m2'
+import { mockRecognizeQuestion, mockMatchQuestion } from '../../services/m2'
 
 const scrollbarStyles = `
   .photo-qa-scroll::-webkit-scrollbar { width: 4px; }
   .photo-qa-scroll::-webkit-scrollbar-track { background: transparent; }
-  .photo-qa-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
-  }
-  .photo-qa-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
-  }
+  .photo-qa-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+  .photo-qa-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 `
 
 export default function PhotoQAPage({ onBack, onExplain }) {
@@ -24,15 +19,29 @@ export default function PhotoQAPage({ onBack, onExplain }) {
   const [imagePreview, setImagePreview] = useState(null)
   const [error, setError] = useState(null)
   const [showCamera, setShowCamera] = useState(false)
+  const [matchResult, setMatchResult] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  // 裁剪状态
+  const [cropping, setCropping] = useState(false)
+  const [cropBox, setCropBox] = useState(null)
+  const [cropStart, setCropStart] = useState(null)
+  const imageContainerRef = useRef(null)
 
   const handleImage = async (image) => {
     setLoading(true)
     setError(null)
     setImagePreview(URL.createObjectURL(image))
     setShowCamera(false)
+    setCropping(true)
+    setCropBox(null)
+    setMatchResult(null)
     try {
       const result = await mockRecognizeQuestion(image)
       setOcrResult(result)
+      // 同时匹配题库
+      const matched = await mockMatchQuestion(result.structuredQuestion.stem, result.structuredQuestion.subject)
+      setMatchResult(matched)
     } catch (err) {
       setError('OCR 识别失败，请重试')
     }
@@ -43,6 +52,47 @@ export default function PhotoQAPage({ onBack, onExplain }) {
     setOcrResult(null)
     setImagePreview(null)
     setError(null)
+    setCropBox(null)
+    setCropping(false)
+    setMatchResult(null)
+  }
+
+  // 裁剪交互
+  const handleCropMouseDown = useCallback((e) => {
+    if (!cropping || !imageContainerRef.current) return
+    const rect = imageContainerRef.current.getBoundingClientRect()
+    setCropStart({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+  }, [cropping])
+
+  const handleCropMouseMove = useCallback((e) => {
+    if (!cropStart || !imageContainerRef.current) return
+    const rect = imageContainerRef.current.getBoundingClientRect()
+    const currentX = e.clientX - rect.left
+    const currentY = e.clientY - rect.top
+    setCropBox({
+      x: Math.min(cropStart.x, currentX),
+      y: Math.min(cropStart.y, currentY),
+      w: Math.abs(currentX - cropStart.x),
+      h: Math.abs(currentY - cropStart.y),
+    })
+  }, [cropStart])
+
+  const handleCropMouseUp = useCallback(() => {
+    setCropStart(null)
+  }, [])
+
+  const confirmCrop = useCallback(() => {
+    setCropping(false)
+  }, [])
+
+  const resetCrop = useCallback(() => {
+    setCropBox(null)
+    setCropping(true)
+  }, [])
+
+  const handleKnowledgePointClick = (kp) => {
+    setToast(`"${kp.name}" 知识图谱（即将开放）`)
+    setTimeout(() => setToast(null), 2000)
   }
 
   return (
@@ -89,10 +139,55 @@ export default function PhotoQAPage({ onBack, onExplain }) {
               <p className="text-sm text-purple-200/70">拍摄或上传题目图片，AI 自动识别并生成详细解答</p>
             </div>
 
-            {/* 图片预览 */}
+            {/* 图片预览 + 裁剪 */}
             {imagePreview && (
-              <div className="mb-4 relative rounded-2xl overflow-hidden shadow-xl border border-white/10">
-                <img src={imagePreview} alt="preview" className="w-full max-h-72 object-contain bg-black/20" />
+              <div className="mb-4">
+                <div
+                  ref={imageContainerRef}
+                  className="relative rounded-2xl overflow-hidden shadow-xl border border-white/10 select-none"
+                  onMouseDown={handleCropMouseDown}
+                  onMouseMove={handleCropMouseMove}
+                  onMouseUp={handleCropMouseUp}
+                  onMouseLeave={handleCropMouseUp}
+                >
+                  <img src={imagePreview} alt="preview" className="w-full max-h-72 object-contain bg-black/20" />
+                  {/* 裁剪遮罩 */}
+                  {cropping && (
+                    <div className="absolute inset-0 bg-black/30">
+                      {cropBox && cropBox.w > 0 && cropBox.h > 0 && (
+                        <div
+                          className="absolute border-2 border-white bg-white/10"
+                          style={{ left: cropBox.x, top: cropBox.y, width: cropBox.w, height: cropBox.h }}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {cropBox && cropBox.w > 0 && cropBox.h > 0 && !cropping && (
+                    <div
+                      className="absolute border-2 border-amber-400 bg-amber-400/10"
+                      style={{ left: cropBox.x, top: cropBox.y, width: cropBox.w, height: cropBox.h }}
+                    />
+                  )}
+                </div>
+                {/* 裁剪工具栏 */}
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs text-purple-200/60">
+                    <Crop className="w-3.5 h-3.5" />
+                    {cropping ? '在图片上拖拽选择识别区域' : (cropBox && '已选择识别区域')}
+                  </div>
+                  <div className="flex gap-2">
+                    {cropping && cropBox && cropBox.w > 0 && cropBox.h > 0 && (
+                      <button onClick={confirmCrop} className="text-xs px-3 py-1 rounded-lg bg-green-500/20 text-green-300 border border-green-400/20 hover:bg-green-500/30 transition-all">
+                        确认选区
+                      </button>
+                    )}
+                    {!cropping && cropBox && cropBox.w > 0 && cropBox.h > 0 && (
+                      <button onClick={resetCrop} className="text-xs px-3 py-1 rounded-lg bg-white/10 text-white/60 border border-white/10 hover:bg-white/20 transition-all">
+                        重新选择
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <button
                   onClick={() => setImagePreview(null)}
                   className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors"
@@ -157,7 +252,7 @@ export default function PhotoQAPage({ onBack, onExplain }) {
           </>
         ) : (
           <>
-            {/* 识别成功动画 */}
+            {/* 识别成功 */}
             <div className="bg-green-500/10 backdrop-blur-sm border border-green-400/20 rounded-2xl p-4 mb-4 flex items-center gap-3">
               <CheckCircle className="w-6 h-6 text-green-400" />
               <div>
@@ -170,17 +265,48 @@ export default function PhotoQAPage({ onBack, onExplain }) {
               </button>
             </div>
 
-            <OCRResultCard result={ocrResult} onEdit={(text) => setOcrResult({
+            {/* 题库匹配展示 */}
+            {matchResult?.matched && (
+              <div className="mb-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 backdrop-blur-sm rounded-xl p-4 border border-amber-400/15">
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="w-4 h-4 text-amber-300" />
+                  <span className="text-sm font-medium text-amber-200">题库匹配成功</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300/70">匹配度 {(matchResult.matchDegree * 100).toFixed(0)}%</span>
+                </div>
+                <p className="text-xs text-amber-200/60 mb-2">已有解析：{matchResult.existingExplanation || '勾股定理：a²+b²=c²'}</p>
+                {matchResult.knowledgePoints && (
+                  <div className="flex flex-wrap gap-1">
+                    {matchResult.knowledgePoints.map(kp => (
+                      <span key={kp.id} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300/70 border border-amber-400/10">{kp.name}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <OCRResultCard result={ocrResult} onEdit={(data) => setOcrResult({
               ...ocrResult,
-              structuredQuestion: { ...ocrResult.structuredQuestion, stem: text }
+              recognizedText: data.recognizedText,
+              structuredQuestion: {
+                ...ocrResult.structuredQuestion,
+                stem: data.stem,
+                options: data.options || ocrResult.structuredQuestion.options
+              }
             })} />
 
-            <QAResultPanel ocrRecordId={ocrResult.ocrRecordId} question={ocrResult.structuredQuestion} onExplain={onExplain ? () => onExplain({ wrongQuestionId: ocrResult.ocrRecordId }) : undefined} />
+            <QAResultPanel ocrRecordId={ocrResult.ocrRecordId} question={ocrResult.structuredQuestion} onKnowledgePointClick={handleKnowledgePointClick} />
           </>
         )}
       </div>
       </div>
     </div>
+      {toast && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-gradient-to-br from-[#7B5ADB] via-[#6B47D0] to-[#4E7FDB] text-white px-8 py-5 rounded-full shadow-2xl border-2 border-purple-300/50 backdrop-blur-md font-bold text-base text-center max-w-xs">
+            ✨ {toast}
+          </div>
+        </div>
+      )}
     </>
   )
 }
