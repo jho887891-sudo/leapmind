@@ -6,6 +6,18 @@ import OCRResultCard from '../../components/m2/OCRResultCard'
 import QAResultPanel from '../../components/m2/QAResultPanel'
 import { mockRecognizeQuestion } from '../../services/m2'
 
+const scrollbarStyles = `
+  .photo-qa-scroll::-webkit-scrollbar { width: 4px; }
+  .photo-qa-scroll::-webkit-scrollbar-track { background: transparent; }
+  .photo-qa-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+  }
+  .photo-qa-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+`
+
 export default function PhotoQAPage({ onBack }) {
   const [ocrResult, setOcrResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -34,9 +46,17 @@ export default function PhotoQAPage({ onBack }) {
   }
 
   return (
-    <div className="min-h-screen w-full" style={{backgroundImage: "linear-gradient(135deg, #861FCE 0%, #861FCE 16%, #731CCD 16%, #731CCD 32%, #6B1CCF 32%, #6B1CCF 48%, #631DCE 48%, #631DCE 64%, #5A1BCE 64%, #5A1BCE 80%, rgb(86, 43, 205) 80%, rgb(47, 8, 154) 100%)"}}>
+    <>
+      <style>{scrollbarStyles}</style>
+    <div
+      className="fixed inset-0 flex flex-col"
+      style={{
+        backgroundImage: "linear-gradient(135deg, #861FCE 0%, #861FCE 16%, #731CCD 16%, #731CCD 32%, #6B1CCF 32%, #6B1CCF 48%, #631DCE 48%, #631DCE 64%, #5A1BCE 64%, #5A1BCE 80%, rgb(86, 43, 205) 80%, rgb(47, 8, 154) 100%)",
+        backgroundAttachment: "fixed"
+      }}
+    >
       {/* 顶部导航 */}
-      <header className="px-6 py-4 flex items-center justify-between border-b border-purple-400/20">
+      <header className="shrink-0 px-6 py-4 flex items-center justify-between border-b border-purple-400/20">
         <button onClick={onBack} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
           <ArrowLeft className="w-5 h-5" />
           <span className="text-sm font-medium">返回</span>
@@ -48,8 +68,9 @@ export default function PhotoQAPage({ onBack }) {
         <div className="w-16" />
       </header>
 
-      {/* 主内容 */}
-      <div className="max-w-2xl mx-auto p-4 md:p-6">
+      {/* 主内容 - 可滚动区域 */}
+      <div className="flex-1 overflow-y-auto photo-qa-scroll">
+        <div className="max-w-2xl mx-auto p-4 md:p-6">
         {error && (
           <div className="mb-4 bg-red-500/20 backdrop-blur-sm border border-red-400/30 text-red-100 px-4 py-3 rounded-xl flex items-center justify-between">
             <span className="text-sm">{error}</span>
@@ -158,6 +179,8 @@ export default function PhotoQAPage({ onBack }) {
           </>
         )}
       </div>
+      </div>
     </div>
+    </>
   )
 }
