@@ -84,3 +84,120 @@ export async function mockPhotoQA(ocrRecordId, question, onMessage, onError) {
     onMessage(chunk)
   }
 }
+
+/**
+ * 获取错题列表（Mock 数据）
+ */
+export async function mockGetWrongQuestions() {
+  await new Promise(r => setTimeout(r, 500))
+  return {
+    total: 12,
+    items: [
+      {
+        id: 1,
+        questionId: 101,
+        questionContent: {
+          stem: '在直角三角形ABC中，∠C=90°，AC=3，BC=4，则AB=？',
+          options: ['5', '6', '7', '8'],
+          type: 'single_choice'
+        },
+        userAnswer: { selected: 'B' },
+        correctAnswer: 'A',
+        wrongReasonTag: 'concept_unclear',
+        knowledgePoints: [{ id: 10, name: '勾股定理' }],
+        createdAt: '2026-07-20T10:30:00'
+      },
+      {
+        id: 2,
+        questionId: 102,
+        questionContent: {
+          stem: '已知 $f(x) = x^2 + 2x + 1$，求 $f(3)$ 的值。',
+          type: 'short_answer'
+        },
+        userAnswer: { text: '14' },
+        correctAnswer: '16',
+        wrongReasonTag: 'formula_wrong',
+        knowledgePoints: [{ id: 20, name: '二次函数' }],
+        createdAt: '2026-07-20T11:00:00'
+      },
+      {
+        id: 3,
+        questionId: 103,
+        questionContent: {
+          stem: '平行四边形的对角线互相平分。下列哪个条件不能判定四边形是平行四边形？',
+          options: ['两组对边分别相等', '两组对边分别平行', '一组对边平行且相等', '一组对边平行，另一组对边相等'],
+          type: 'single_choice'
+        },
+        userAnswer: { selected: 'C' },
+        correctAnswer: 'D',
+        wrongReasonTag: 'concept_unclear',
+        knowledgePoints: [{ id: 30, name: '平行四边形' }],
+        createdAt: '2026-07-21T09:15:00'
+      }
+    ]
+  }
+}
+
+/**
+ * 生成讲题内容（Mock SSE 流式数据）
+ */
+export async function mockGenerateExplain(params, onMessage, onError) {
+  const { wrongReasonTag } = params
+
+  const reasonBased = {
+    concept_unclear: {
+      overview: '这道题考察的是**勾股定理**的核心应用。你选择了 $6$，说明对 "斜边是最长边" 这个条件还不够熟悉，我们一起来梳理一下。',
+      steps: [
+        { title: '审题分析', content: '题目给出的是直角三角形 $\\triangle ABC$，其中 $\\angle C = 90^\\circ$，$AC = 3$，$BC = 4$，求 $AB$。\n\n**关键信息提取：**\n- 直角顶点是 $C$，所以 $AB$ 是**斜边**\n- $AC$ 和 $BC$ 是两条**直角边**\n- 已知两直角边求斜边 → 用**勾股定理**' },
+        { title: '套用公式', content: '**勾股定理公式：** $a^2 + b^2 = c^2$\n\n其中 $a$、$b$ 是直角边，$c$ 是斜边。\n\n代入本题：\n- $a = AC = 3$\n- $b = BC = 4$\n- $c = AB$（未知）\n\n$$3^2 + 4^2 = AB^2$$' },
+        { title: '计算求解', content: '逐步计算：\n\n$$3^2 = 9$$\n$$4^2 = 16$$\n$$9 + 16 = 25$$\n$$AB^2 = 25$$\n$$AB = \\sqrt{25} = 5$$\n\n正确答案是 **A. 5**。' },
+        { title: '验证检查', content: '**验证：** 斜边 $5$ 是否大于两条直角边 $3$ 和 $4$？$5 > 4 > 3$ ✅\n\n**常见错误分析：**\n- 你选了 $6$，可能是将 $3+4$ 直接相加得到 $7$ 再近似\n- 或者把 $AB$ 误当作直角边计算\n\n**记忆技巧：** 斜边对着直角，是三角形中最长的那条边！' },
+        { title: '总结拓展', content: '**核心考点梳理：**\n1. ✅ 识别直角三角形的直角顶点 → 确定斜边\n2. ✅ 正确代入勾股定理公式 $a^2 + b^2 = c^2$\n3. ✅ 开平方运算\n\n**易错点提醒：** ⚠️\n- 斜边 $c$ 一定是直角所对的边\n- $c$ 的数值一定大于任意一条直角边\n\n**同类题练习：** 一个直角三角形，两条直角边分别是 $5$ 和 $12$，斜边是多少？' }
+      ],
+      tip: '💡 **一句话记忆：** 勾股定理就是「直边的平方和 = 斜边的平方」，记住斜边永远最长！'
+    },
+    formula_wrong: {
+      overview: '这道题考察**二次函数求值**。你计算得到 $14$，正确答案是 $16$，说明在代入公式时出现了计算失误，我们一起来检查一下。',
+      steps: [
+        { title: '审题分析', content: '已知 $f(x) = x^2 + 2x + 1$，求 $f(3)$ 的值。\n\n$f(3)$ 表示将 $x = 3$ 代入函数表达式。' },
+        { title: '代入计算', content: '将 $x = 3$ 逐项代入：\n\n$$f(3) = 3^2 + 2 \\times 3 + 1$$\n\n分步：\n- $3^2 = 9$\n- $2 \\times 3 = 6$\n- $+1$' },
+        { title: '求和结果', content: '$$f(3) = 9 + 6 + 1 = 16$$\n\n正确答案是 **16**。\n\n你算出的 $14$，很可能是将 $2 \\times 3$ 算成了 $4$，或者漏加了某一项。' },
+        { title: '检查验证', content: '**代入验证：**\n还可以将 $f(x)$ 因式分解：$f(x) = (x+1)^2$\n\n那么 $f(3) = (3+1)^2 = 4^2 = 16$ ✅\n\n**检查步骤：**\n1. 检查每一项是否都代入正确\n2. 检查乘法运算是否正确\n3. 检查加法是否遗漏' },
+        { title: '总结拓展', content: '**函数求值三步法：**\n1. 写出表达式\n2. 逐项代入，每步写出中间结果\n3. 合并计算，最后验证\n\n**练习：** $g(x) = 2x^2 - 3x + 5$，求 $g(2)$。' }
+      ],
+      tip: '💡 **检查技巧：** 代入求值时，每算完一步先心算验证再继续，能有效避免粗心错误。'
+    }
+  }
+
+  const defaultData = {
+    overview: '让我们一起来分析这道题，理清解题思路。',
+    steps: [
+      { title: '审题分析', content: '仔细阅读题目，提取关键条件和要求。' },
+      { title: '解题思路', content: '根据题目类型选择合适的解题方法。' },
+      { title: '逐步推导', content: '按照逻辑顺序逐步推导答案。' },
+      { title: '验证答案', content: '检查计算过程和最终答案是否正确。' },
+      { title: '总结提升', content: '归纳解题方法，举一反三。' }
+    ],
+    tip: '💡 多练习是提高成绩的最好方法！'
+  }
+
+  const data = reasonBased[wrongReasonTag] || defaultData
+
+  const chunks = [
+    { type: 'overview', content: data.overview },
+    ...data.steps.map((s, i) => ({
+      type: 'step',
+      stepNumber: i + 1,
+      title: s.title,
+      content: s.content
+    })),
+    { type: 'tip', content: data.tip },
+    { type: 'similar', content: '推荐同类题：勾股定理应用题、勾股定理逆定理判断、勾股定理在实际问题中的应用' },
+    { type: 'done', explainId: 888 }
+  ]
+
+  for (const chunk of chunks) {
+    await new Promise(r => setTimeout(r, 600))
+    onMessage(chunk)
+  }
+}

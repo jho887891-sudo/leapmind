@@ -8,6 +8,7 @@ import LecturePage2 from './pages/LecturePage2';
 import TemHomePage from './pages/TemHomePage';
 import ProfilePage from './pages/ProfilePage.jsx';
 import PhotoQAPage from './pages/m2/PhotoQAPage';
+import ExplainPage from './pages/m2/ExplainPage';
 import { hasValidToken } from './utils/tokenManager';
 import { checkAuth, logout } from './services/authService';
 
@@ -18,6 +19,7 @@ export default function App() {
     const [guestRoute, setGuestRoute] = useState('home'); // home | profile
     const [showProfile, setShowProfile] = useState(false);
     const [m2Page, setM2Page] = useState(null); // null | 'photo-qa' | 'explain' | 'explain-history'
+    const [m2Params, setM2Params] = useState({}); // 传递给 M2 页面的参数
 
     useEffect(() => {
         const checkSession = async () => {
@@ -80,7 +82,9 @@ export default function App() {
                     </div>
                 )
             ) : m2Page === 'photo-qa' ? (
-                <PhotoQAPage onBack={() => setM2Page(null)} />
+                <PhotoQAPage onBack={() => setM2Page(null)} onExplain={(params) => { setM2Params(params); setM2Page('explain'); }} />
+            ) : m2Page === 'explain' ? (
+                <ExplainPage onBack={() => setM2Page(null)} wrongQuestionId={m2Params.wrongQuestionId} />
             ) : currentCourseId ? (
                       <LecturePage2 courseId={currentCourseId} onBack={() => setCurrentCourseId('')} />
             ) : (
@@ -91,6 +95,7 @@ export default function App() {
                         onEnterProject={(courseId) => setCurrentCourseId(courseId)}
                         onOpenProfile={handleOpenProfile}
                         onM2PhotoQa={() => setM2Page('photo-qa')}
+                        onM2Explain={() => setM2Page('explain')}
                     />
                 )
             )}

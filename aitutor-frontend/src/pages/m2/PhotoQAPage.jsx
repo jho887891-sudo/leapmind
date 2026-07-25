@@ -18,7 +18,7 @@ const scrollbarStyles = `
   }
 `
 
-export default function PhotoQAPage({ onBack }) {
+export default function PhotoQAPage({ onBack, onExplain }) {
   const [ocrResult, setOcrResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [imagePreview, setImagePreview] = useState(null)
@@ -175,7 +175,7 @@ export default function PhotoQAPage({ onBack }) {
               structuredQuestion: { ...ocrResult.structuredQuestion, stem: text }
             })} />
 
-            <QAResultPanel ocrRecordId={ocrResult.ocrRecordId} question={ocrResult.structuredQuestion} />
+            <QAResultPanel ocrRecordId={ocrResult.ocrRecordId} question={ocrResult.structuredQuestion} onExplain={onExplain ? () => onExplain({ wrongQuestionId: ocrResult.ocrRecordId }) : undefined} />
           </>
         )}
       </div>

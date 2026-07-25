@@ -3,10 +3,10 @@ import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
-import { Sparkles, ThumbsUp, HelpCircle } from 'lucide-react'
+import { Sparkles, ThumbsUp, HelpCircle, MessageCircle } from 'lucide-react'
 import { mockPhotoQA } from '../../services/m2'
 
-export default function QAResultPanel({ ocrRecordId, question }) {
+export default function QAResultPanel({ ocrRecordId, question, onExplain }) {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -89,13 +89,24 @@ export default function QAResultPanel({ ocrRecordId, question }) {
 
       {/* 反馈按钮 */}
       {done && (
-        <div className="mt-4 flex gap-3 justify-center">
-          <button className="px-4 py-2 bg-green-500/20 text-green-300 rounded-xl text-sm font-medium hover:bg-green-500/30 transition-all flex items-center gap-1.5 border border-green-400/20">
-            <ThumbsUp className="w-4 h-4" /> 懂了
-          </button>
-          <button className="px-4 py-2 bg-yellow-500/20 text-yellow-300 rounded-xl text-sm font-medium hover:bg-yellow-500/30 transition-all flex items-center gap-1.5 border border-yellow-400/20">
-            <HelpCircle className="w-4 h-4" /> 还有疑问
-          </button>
+        <div className="mt-4 space-y-3">
+          <div className="flex gap-3">
+            <button className="flex-1 px-4 py-2 bg-green-500/20 text-green-300 rounded-xl text-sm font-medium hover:bg-green-500/30 transition-all flex items-center justify-center gap-1.5 border border-green-400/20">
+              <ThumbsUp className="w-4 h-4" /> 懂了
+            </button>
+            <button className="flex-1 px-4 py-2 bg-yellow-500/20 text-yellow-300 rounded-xl text-sm font-medium hover:bg-yellow-500/30 transition-all flex items-center justify-center gap-1.5 border border-yellow-400/20">
+              <HelpCircle className="w-4 h-4" /> 还有疑问
+            </button>
+          </div>
+          {onExplain && (
+            <button
+              onClick={onExplain}
+              className="w-full py-2.5 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl text-sm font-medium hover:shadow-lg hover:shadow-purple-500/30 transition-all flex items-center justify-center gap-2"
+            >
+              <MessageCircle className="w-4 h-4" />
+              AI 讲题（针对错题深入讲解）
+            </button>
+          )}
         </div>
       )}
     </div>
