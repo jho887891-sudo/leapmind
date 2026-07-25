@@ -85,9 +85,9 @@ export default function App() {
             ) : m2Page === 'photo-qa' ? (
                 <PhotoQAPage onBack={() => setM2Page(null)} onExplain={(params) => { setM2Params(params); setM2Page('explain'); }} />
             ) : m2Page === 'explain' ? (
-                <ExplainPage onBack={() => { setM2Params({}); setM2Page(null); }} wrongQuestionId={m2Params.wrongQuestionId} replayId={m2Params.replayId} />
+                <ExplainPage onBack={() => { const from = m2Params.from; setM2Params(from === 'explain-history' ? { from: 'explain' } : {}); setM2Page(from === 'explain-history' ? 'explain-history' : null); }} wrongQuestionId={m2Params.wrongQuestionId} replayId={m2Params.replayId} onExplainHistory={() => { setM2Params({ from: 'explain' }); setM2Page('explain-history'); }} />
             ) : m2Page === 'explain-history' ? (
-                <ExplainHistoryPage onBack={() => setM2Page(null)} onReplay={(id) => { setM2Params({ replayId: id }); setM2Page('explain'); }} />
+                <ExplainHistoryPage onBack={m2Params.from === 'explain' ? () => { setM2Params({}); setM2Page('explain'); } : () => setM2Page(null)} onReplay={(id) => { setM2Params({ replayId: id, from: 'explain-history' }); setM2Page('explain'); }} />
             ) : currentCourseId ? (
                       <LecturePage2 courseId={currentCourseId} onBack={() => setCurrentCourseId('')} />
             ) : (
@@ -99,7 +99,6 @@ export default function App() {
                         onOpenProfile={handleOpenProfile}
                         onM2PhotoQa={() => setM2Page('photo-qa')}
                         onM2Explain={() => { setM2Params({}); setM2Page('explain'); }}
-                        onM2ExplainHistory={() => setM2Page('explain-history')}
                     />
                 )
             )}

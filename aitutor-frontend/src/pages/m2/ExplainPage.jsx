@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   ArrowLeft, Sparkles, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  RefreshCw, Target, BookOpen, ThumbsUp, HelpCircle, Clock
+  RefreshCw, Target, BookOpen, ThumbsUp, HelpCircle, Clock, History
 } from 'lucide-react'
 import StepProgress from '../../components/m2/StepProgress'
 import ExplainContent from '../../components/m2/ExplainContent'
@@ -100,7 +100,7 @@ function QuestionCard({ question, expanded, onToggle, onKnowledgePointClick }) {
   )
 }
 
-export default function ExplainPage({ onBack, replayId }) {
+export default function ExplainPage({ onBack, replayId, onExplainHistory }) {
   const [wrongQuestions, setWrongQuestions] = useState([])
   const [selectedQuestion, setSelectedQuestion] = useState(null)
   const [questionExpanded, setQuestionExpanded] = useState(true)
@@ -241,16 +241,23 @@ export default function ExplainPage({ onBack, replayId }) {
           backgroundAttachment: "fixed"
         }}
       >
-        <header className="shrink-0 px-6 py-4 flex items-center justify-between border-b border-purple-400/20">
-          <button onClick={replayId ? onBack : (selectMode ? onBack : handleBackToList)} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+        <header className="shrink-0 px-6 py-4 flex items-center border-b border-purple-400/20">
+          <button onClick={replayId ? onBack : (selectMode ? onBack : handleBackToList)} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium">{replayId ? '返回' : (selectMode ? '返回' : '换一题')}</span>
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 justify-center">
             <Sparkles className="w-5 h-5 text-purple-200" />
             <h1 className="text-lg font-bold text-white">{replayId ? '讲题回放' : 'AI 讲题'}</h1>
           </div>
-          <div className="w-16" />
+          <button
+            onClick={onExplainHistory}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/15 text-white/85 hover:bg-white/25 hover:text-white border border-white/15 transition-all shrink-0"
+            title="讲题历史"
+          >
+            <History className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">历史记录</span>
+          </button>
         </header>
 
         <div className="flex-1 overflow-y-auto explain-scroll">
