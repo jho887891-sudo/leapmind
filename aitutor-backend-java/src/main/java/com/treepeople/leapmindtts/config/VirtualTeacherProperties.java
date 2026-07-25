@@ -11,6 +11,7 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "virtual-teacher")
 public class VirtualTeacherProperties {
     private Duration cacheTtl = Duration.ofHours(24);
+    private Duration synthesisTimeout = Duration.ofSeconds(125);
     private Storage storage = new Storage();
 
     @Data

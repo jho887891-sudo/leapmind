@@ -1,5 +1,6 @@
 package com.treepeople.leapmindtts.service.virtualteacher;
 
+import com.treepeople.leapmindtts.config.VirtualTeacherProperties;
 import com.treepeople.leapmindtts.pojo.dto.VirtualTeacherTtsRequest;
 import com.treepeople.leapmindtts.service.lesson.TextToSpeechService;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,11 +31,13 @@ class VirtualTeacherTtsServiceTest {
     private AudioStorageService storage;
 
     private VirtualTeacherTtsService service;
+    private VirtualTeacherProperties properties;
     private VirtualTeacherTtsRequest request;
 
     @BeforeEach
     void setUp() {
-        service = new VirtualTeacherTtsService(textToSpeechService, cache, storage);
+        properties = new VirtualTeacherProperties();
+        service = new VirtualTeacherTtsService(textToSpeechService, cache, storage, properties);
         request = new VirtualTeacherTtsRequest();
         request.setText("同学们好");
         request.setVoiceType("zhixiaoxia");

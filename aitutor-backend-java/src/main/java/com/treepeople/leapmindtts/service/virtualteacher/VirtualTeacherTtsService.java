@@ -1,5 +1,6 @@
 package com.treepeople.leapmindtts.service.virtualteacher;
 
+import com.treepeople.leapmindtts.config.VirtualTeacherProperties;
 import com.treepeople.leapmindtts.pojo.dto.VirtualTeacherTtsRequest;
 import com.treepeople.leapmindtts.pojo.vo.VirtualTeacherTtsVO;
 import com.treepeople.leapmindtts.service.lesson.TextToSpeechService;
@@ -8,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.Duration;
 import java.util.HexFormat;
 import java.util.Optional;
 
@@ -19,6 +19,7 @@ public class VirtualTeacherTtsService {
     private final TextToSpeechService textToSpeechService;
     private final VirtualTeacherTtsCache cache;
     private final AudioStorageService storage;
+    private final VirtualTeacherProperties properties;
 
     public SynthesisResult synthesize(VirtualTeacherTtsRequest request) {
         String voice = request.getVoiceType() == null || request.getVoiceType().isBlank()
@@ -38,7 +39,7 @@ public class VirtualTeacherTtsService {
 
         byte[] audio = textToSpeechService
                 .synthesizeSpeech(request.getText().trim(), voice, speed)
-                .block(Duration.ofSeconds(125));
+                .block(properties.getSynthesisTimeout());
         if (audio == null || audio.length == 0) {
             throw new IllegalStateException("TTS 服务返回空音频");
         }

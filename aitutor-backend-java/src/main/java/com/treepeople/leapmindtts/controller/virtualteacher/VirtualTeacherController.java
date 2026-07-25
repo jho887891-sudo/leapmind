@@ -86,13 +86,17 @@ public class VirtualTeacherController {
 
     @PostMapping("/tts")
     public ApiResponse<VirtualTeacherTtsVO> synthesize(
+            HttpServletRequest httpRequest,
             @Valid @RequestBody VirtualTeacherTtsRequest request) {
+        requireUserId(httpRequest);
         return ApiResponse.success(ttsService.synthesize(request).response(), "语音合成完成");
     }
 
     @PostMapping(value = "/tts/stream", produces = "audio/wav")
     public ResponseEntity<StreamingResponseBody> synthesizeStream(
+            HttpServletRequest httpRequest,
             @Valid @RequestBody VirtualTeacherTtsRequest request) {
+        requireUserId(httpRequest);
         VirtualTeacherTtsService.SynthesisResult result = ttsService.synthesize(request);
         StreamingResponseBody body = output -> {
             byte[] audio = result.audio();
