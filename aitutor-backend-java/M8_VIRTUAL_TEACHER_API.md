@@ -5,9 +5,9 @@
 
 ## 1. 当前结论
 
-M8 Java 后端已经实现了可联调的 MVP，不是空壳。它具备数据库表、管理员形象 CRUD、用户偏好保存、TTS 合成、Redis 缓存、MinIO/本地音频存储、JWT 保护、参数校验和基础单元测试。
+M8 Java 后端已经按正式项目补齐核心工程能力。它具备数据库表、管理员形象 CRUD、用户偏好保存、TTS 合成、Redis 缓存、MinIO/本地音频存储、JWT 保护、参数校验、用户级限流、每日字符配额、审计日志、Micrometer 指标和单元测试。
 
-但它还不能算完整工业化版本。当前更准确的定位是“工程化 MVP”：能支撑前端演示和基础联调，已经有生产化雏形，但还缺少异步任务、限流、审计日志、监控指标、失败重试、真正边生成边播放的流式 TTS、资源配额等正式上线能力。
+当前仍保留同步 TTS 调用模式，适合课程演示、联调和中小规模使用。若后续要承载高并发或长文本批量合成，应继续升级为异步任务队列和真正低延迟流式 TTS。
 
 ## 2. 鉴权规则
 
@@ -134,6 +134,12 @@ Content-Type: application/json
 }
 ```
 
+限流：
+
+- 默认每个用户每分钟最多 20 次 TTS 请求。
+- 默认每个用户每天最多合成 20000 个字符。
+- 超限返回 HTTP 429。
+
 缓存规则：
 
 ```text
@@ -244,6 +250,10 @@ DELETE /api/virtual-teacher/avatars/{id}
 virtual-teacher:
   cache-ttl: 24h
   synthesis-timeout: 125s
+  rate-limit:
+    enabled: true
+    requests-per-minute: 20
+    daily-characters: 20000
   storage:
     type: ${VIRTUAL_TEACHER_STORAGE_TYPE:local}
     local-dir: ${VIRTUAL_TEACHER_LOCAL_DIR:${java.io.tmpdir}/leapmind-tts}
@@ -274,6 +284,16 @@ REDIS_PASSWORD=
 
 Redis 不可用时服务不会中断，会降级到当前 Java 进程内缓存；但进程重启后缓存丢失。
 
+限流环境变量：
+
+```text
+VIRTUAL_TEACHER_RATE_LIMIT_ENABLED=true
+VIRTUAL_TEACHER_REQUESTS_PER_MINUTE=20
+VIRTUAL_TEACHER_DAILY_CHARACTERS=20000
+```
+
+限流优先使用 Redis 计数。Redis 不可用时降级为当前 Java 进程内计数。
+
 ## 6. 数据库
 
 迁移文件：
@@ -288,6 +308,7 @@ src/main/resources/db/migration/V3__add_virtual_teacher.sql
 |---|---|
 | teacher_avatars | 虚拟教师形象表 |
 | user_teacher_preferences | 用户教师偏好表 |
+| virtual_teacher_tts_audit_logs | TTS 合成审计日志表 |
 
 初始化形象：
 
@@ -308,14 +329,16 @@ src/main/resources/db/migration/V3__add_virtual_teacher.sql
 - MinIO 对象存储和本地存储降级
 - 音频对象 key 白名单校验，避免任意路径读取
 - TTS 超时配置化
+- 用户级 TTS 请求限流
+- 用户级每日合成字符配额
+- TTS 成功/失败审计日志
+- Micrometer 指标：请求数、缓存命中、音频大小、合成耗时
 - TTS 缓存命中/未命中单元测试
+- 限流和审计调用单元测试
 
-仍需补齐：
+后续增强项：
 
 - TTS 异步任务队列，避免长文本合成占用 HTTP 请求线程
-- 接口限流和用户级配额，避免 TTS 成本失控
-- Micrometer 指标：合成耗时、缓存命中率、失败率、音频大小
-- 审计日志：谁在什么时候使用了哪个形象、合成了多少字符
 - 第三方 TTS 失败重试和熔断
 - 真正低延迟流式 TTS，而不是合成完成后再分块返回
 - 管理端更细粒度权限，当前依赖现有 `@AdminRequired`
@@ -332,3 +355,4 @@ mvn test
 
 - 缓存命中时不调用第三方 TTS
 - 缓存未命中时合成、存储并写入缓存
+- 用户请求会触发限流检查和审计日志记录
