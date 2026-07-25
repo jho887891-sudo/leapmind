@@ -3,7 +3,7 @@
 > 模块负责人：欧俊濠  
 > 模块名称：M8 虚拟 AI 教师·优化  
 > 当前技术路线：React 19 + Three.js + VRM 3D + Web Audio API  
-> 文档状态：M8-V1.1 前端已实现，等待 Java/Python 真实数据联调
+> 文档状态：M8-V1.1 前端与 Java 接口已实现，等待运行环境及 Python 真实数据联调
 
 ---
 
@@ -377,12 +377,13 @@ Content-Type: application/json
 
 ### 7.1 Java
 
-- [ ] 确认形象 CRUD 的字段和权限。
-- [ ] 确认用户偏好接口路径。
-- [ ] 确认 TTS 返回音频流还是 JSON URL。
-- [ ] 音频 URL 是否为可直接访问的签名 URL。
-- [ ] 流式 TTS 使用 SSE、WebSocket 还是分块 HTTP。
-- [ ] 明确错误码：未登录、模型不存在、TTS 超时、供应商失败。
+- [x] 教师形象 CRUD 和管理员权限。
+- [x] 用户形象、音色、语速偏好。
+- [x] TTS JSON URL 响应。
+- [x] MinIO 预签名 URL及本地存储降级。
+- [x] HTTP 分块音频响应。
+- [x] Redis 24 小时缓存及进程内降级。
+- [ ] 在部署环境验证 Redis、MinIO 和阿里云 TTS 凭据。
 
 ### 7.2 Python
 
