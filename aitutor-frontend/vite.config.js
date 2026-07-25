@@ -57,6 +57,30 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        // M2 - OCR 识别
+        '/api/ocr': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
+        // M2 - 讲题
+        '/api/explain': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
+        // M1 - 错题本
+        '/api/wrong-questions': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
+        // M7 - 对话
+        '/api/conversation': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
   }

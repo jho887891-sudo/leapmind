@@ -35,7 +35,7 @@ const scrollbarStyles = `
   }
 `
 
-export default function LearningApp({ onOpenProfile, onEnterProject }) {
+export default function LearningApp({ onOpenProfile, onEnterProject, onM2PhotoQa, onM2Explain }) {
   // UI 状态
   const [isGradeOpen, setIsGradeOpen] = useState(false)
   const [lineStyle, setLineStyle] = useState({ top: 0, bottom: 0 })
@@ -446,8 +446,10 @@ export default function LearningApp({ onOpenProfile, onEnterProject }) {
   }, [currentUnitNames, selectedUnit])
 
   const features = [
-    { title: "拍照搜题", color: "from-pink-400 via-pink-300 to-orange-400", icon: "./svg/paizhaosouti.svg" },
-    { title: "学情分析", color: "from-cyan-300 via-blue-300 to-blue-500", icon: "./svg/xueqingfenxi.svg" },
+    { title: "拍照搜题", color: "from-pink-400 via-pink-300 to-orange-400", icon: "./svg/paizhaosouti.svg", action: onM2PhotoQa },
+    { title: "AI 讲题", color: "from-purple-400 via-purple-300 to-indigo-500", icon: null, custom: true, action: onM2Explain },
+
+    { title: "学情分析", color: "from-cyan-300 via-blue-300 to-blue-500", icon: "./svg/xueqingfenxi.svg", action: null },
   ]
 
 
@@ -694,10 +696,54 @@ export default function LearningApp({ onOpenProfile, onEnterProject }) {
           {features.map((feature, idx) => (
             <div
               key={idx}
-              onClick={() => showFeatureToast("该功能暂未开放~")}
+              onClick={() => feature.action ? feature.action() : showFeatureToast("该功能暂未开放~")}
               className={`bg-gradient-to-br ${feature.color} rounded-xl p-0 text-center text-purple-900 font-semibold text-base shadow-2xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 cursor-pointer min-h-48 flex flex-col items-center justify-center border border-white/20 overflow-hidden`}
             >
-              {feature.icon ? (
+              {feature.custom ? (
+                <div className="flex items-center justify-center w-full h-full gap-3 px-3">
+                  {/* 左边：小机器人 */}
+                  <svg className="w-16 h-16 shrink-0" viewBox="0 0 80 80">
+                    <circle cx="40" cy="38" r="22" fill="white" opacity="0.25"/>
+                    <rect x="26" y="16" width="28" height="22" rx="6" fill="white" opacity="0.9"/>
+                    <circle cx="33" cy="26" r="4" fill="#7C3AED"/>
+                    <circle cx="47" cy="26" r="4" fill="#7C3AED"/>
+                    <circle cx="34" cy="26" r="1.5" fill="white"/>
+                    <circle cx="48" cy="26" r="1.5" fill="white"/>
+                    <rect x="33" y="32" width="14" height="2" rx="1" fill="#7C3AED"/>
+                    <rect x="28" y="15" width="8" height="3" rx="1.5" fill="white" opacity="0.6"/>
+                    <rect x="44" y="15" width="8" height="3" rx="1.5" fill="white" opacity="0.6"/>
+                    <rect x="35" y="38" width="10" height="12" rx="3" fill="white" opacity="0.7"/>
+                    <rect x="33" y="50" width="5" height="8" rx="2" fill="white" opacity="0.5"/>
+                    <rect x="42" y="50" width="5" height="8" rx="2" fill="white" opacity="0.5"/>
+                    <circle cx="29" cy="32" r="3" fill="#F472B6" opacity="0.2"/>
+                    <circle cx="51" cy="32" r="3" fill="#F472B6" opacity="0.2"/>
+                  </svg>
+                  {/* 中间：文字（放大居中） */}
+                  <div className="flex flex-col items-center justify-center flex-1">
+                    <span className="text-5xl font-black text-white drop-shadow-2xl tracking-[0.15em] leading-none">AI</span>
+                    <span className="text-3xl font-bold text-white drop-shadow-xl tracking-[0.25em] leading-tight">讲 题</span>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <div className="w-2 h-2 rounded-full bg-white/60" />
+                      <div className="w-2 h-2 rounded-full bg-white/40" />
+                      <div className="w-2 h-2 rounded-full bg-white/20" />
+                    </div>
+                  </div>
+                  {/* 右边：星光 */}
+                  <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    <svg className="w-6 h-6 text-yellow-200/70" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 0l1.5 6.5L18 7l-5.5 3.5L13 17l-3-4.5L7 17l.5-6.5L2 7l6.5-.5z"/>
+                    </svg>
+                    <svg className="w-4 h-4 text-blue-200/50" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 0l1.5 6.5L18 7l-5.5 3.5L13 17l-3-4.5L7 17l.5-6.5L2 7l6.5-.5z"/>
+                    </svg>
+                    <svg className="w-5 h-5 text-pink-200/50" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10 0l1.5 6.5L18 7l-5.5 3.5L13 17l-3-4.5L7 17l.5-6.5L2 7l6.5-.5z"/>
+                    </svg>
+                  </div>
+                </div>
+              ) : feature.emoji ? (
+                <span className="text-5xl">{feature.emoji}</span>
+              ) : feature.icon ? (
                 <img src={feature.icon} alt={feature.title} className="w-full h-full object-cover" />
               ) : (
                 <span>{feature.title}</span>
