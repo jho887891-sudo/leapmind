@@ -81,6 +81,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        // M6 用户画像、知识掌握度与复习提醒（Java 后端）
+        '/api/user-profile': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
   }
