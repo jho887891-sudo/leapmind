@@ -426,6 +426,22 @@ function normalizeTimeline(source, fallback) {
   }));
 }
 
+function reminderPriority(value) {
+  const numericPriority = Number(value);
+  if (Number.isFinite(numericPriority)) {
+    if (numericPriority >= 2) return 'high';
+    if (numericPriority === 1) return 'medium';
+    return 'low';
+  }
+  return String(value || 'medium').toLowerCase();
+}
+
+function reminderStatus(item) {
+  const status = pick(item, ['status', 'state'], null);
+  if (status !== null) return status;
+  return Number(pick(item, ['isReviewed'], 0)) === 1 ? 'completed' : 'pending';
+}
+
 function normalizeReminders(source, fallback) {
   const raw = collectionFrom(source, ['reminders', 'reviewReminders', 'reviewPlans', 'records', 'list', 'items']);
   if (!raw.length) return clone(fallback);
@@ -435,10 +451,10 @@ function normalizeReminders(source, fallback) {
     knowledgePointId: String(pick(item, ['knowledgePointId', 'pointId', 'knowledgeId'], '')),
     title: pick(item, ['title', 'name', 'knowledgePointName', 'content'], '\u77e5\u8bc6\u70b9\u590d\u4e60'),
     subject: pick(item, ['subject', 'subjectName', 'courseName'], ''),
-    dueAt: pick(item, ['dueAt', 'reviewAt', 'reviewDate', 'scheduledAt', 'date'], ''),
-    priority: pick(item, ['priority', 'level'], 'medium'),
-    reason: pick(item, ['reason', 'description', 'suggestion'], ''),
-    status: pick(item, ['status', 'state'], 'pending'),
+    dueAt: pick(item, ['dueAt', 'reviewAt', 'reviewDate', 'scheduledAt', 'scheduledDate', 'date'], ''),
+    priority: reminderPriority(pick(item, ['priority', 'level'], 'medium')),
+    reason: pick(item, ['reason', 'description', 'suggestion', 'reminderType'], ''),
+    status: reminderStatus(item),
   }));
 }
 
@@ -609,11 +625,11 @@ function normalizeReviewPlan(source, remindersSource, knowledgePointId, fallback
 
   return raw.map((item, index) => ({
     id: String(pick(item, ['id', 'planId', 'reminderId'], `${knowledgePointId}-review-${index + 1}`)),
-    date: pick(item, ['date', 'dueAt', 'reviewAt', 'reviewDate', 'scheduledAt'], ''),
+    date: pick(item, ['date', 'dueAt', 'reviewAt', 'reviewDate', 'scheduledAt', 'scheduledDate'], ''),
     title: pick(item, ['title', 'name', 'content'], '\u77e5\u8bc6\u70b9\u590d\u4e60'),
     type: pick(item, ['type', 'reviewType'], 'review'),
     durationMinutes: numberValue(pick(item, ['durationMinutes', 'estimatedMinutes', 'duration'], 15), 15),
-    status: pick(item, ['status', 'state'], 'pending'),
+    status: reminderStatus(item),
   }));
 }
 
