@@ -35,7 +35,7 @@ const scrollbarStyles = `
   }
 `
 
-export default function LearningApp({ onOpenProfile, onEnterProject, onM2PhotoQa, onM2Explain }) {
+export default function LearningApp({ onOpenProfile, onEnterProject, onM2PhotoQa, onM2Explain, onM2ExplainHistory }) {
   // UI 状态
   const [isGradeOpen, setIsGradeOpen] = useState(false)
   const [lineStyle, setLineStyle] = useState({ top: 0, bottom: 0 })
@@ -448,6 +448,7 @@ export default function LearningApp({ onOpenProfile, onEnterProject, onM2PhotoQa
   const features = [
     { title: "拍照搜题", color: "from-pink-400 via-pink-300 to-orange-400", icon: "./svg/paizhaosouti.svg", action: onM2PhotoQa },
     { title: "AI 讲题", color: "from-purple-400 via-purple-300 to-indigo-500", icon: null, custom: true, action: onM2Explain },
+    { title: "讲题历史", color: "from-emerald-400 via-teal-300 to-cyan-500", icon: null, emoji: "📋", action: onM2ExplainHistory },
     { title: "学情分析", color: "from-cyan-300 via-blue-300 to-blue-500", icon: "./svg/xueqingfenxi.svg", action: null },
   ]
 
@@ -740,6 +741,8 @@ export default function LearningApp({ onOpenProfile, onEnterProject, onM2PhotoQa
                     </svg>
                   </div>
                 </div>
+              ) : feature.emoji ? (
+                <span className="text-5xl">{feature.emoji}</span>
               ) : feature.icon ? (
                 <img src={feature.icon} alt={feature.title} className="w-full h-full object-cover" />
               ) : (

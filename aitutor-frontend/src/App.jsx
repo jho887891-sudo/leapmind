@@ -9,6 +9,7 @@ import TemHomePage from './pages/TemHomePage';
 import ProfilePage from './pages/ProfilePage.jsx';
 import PhotoQAPage from './pages/m2/PhotoQAPage';
 import ExplainPage from './pages/m2/ExplainPage';
+import ExplainHistoryPage from './pages/m2/ExplainHistoryPage';
 import { hasValidToken } from './utils/tokenManager';
 import { checkAuth, logout } from './services/authService';
 
@@ -84,7 +85,9 @@ export default function App() {
             ) : m2Page === 'photo-qa' ? (
                 <PhotoQAPage onBack={() => setM2Page(null)} onExplain={(params) => { setM2Params(params); setM2Page('explain'); }} />
             ) : m2Page === 'explain' ? (
-                <ExplainPage onBack={() => setM2Page(null)} wrongQuestionId={m2Params.wrongQuestionId} />
+                <ExplainPage onBack={() => { setM2Params({}); setM2Page(null); }} wrongQuestionId={m2Params.wrongQuestionId} replayId={m2Params.replayId} />
+            ) : m2Page === 'explain-history' ? (
+                <ExplainHistoryPage onBack={() => setM2Page(null)} onReplay={(id) => { setM2Params({ replayId: id }); setM2Page('explain'); }} />
             ) : currentCourseId ? (
                       <LecturePage2 courseId={currentCourseId} onBack={() => setCurrentCourseId('')} />
             ) : (
@@ -95,7 +98,8 @@ export default function App() {
                         onEnterProject={(courseId) => setCurrentCourseId(courseId)}
                         onOpenProfile={handleOpenProfile}
                         onM2PhotoQa={() => setM2Page('photo-qa')}
-                        onM2Explain={() => setM2Page('explain')}
+                        onM2Explain={() => { setM2Params({}); setM2Page('explain'); }}
+                        onM2ExplainHistory={() => setM2Page('explain-history')}
                     />
                 )
             )}

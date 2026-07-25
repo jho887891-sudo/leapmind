@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   ArrowLeft, Sparkles, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  RefreshCw, Target, BookOpen, ThumbsUp, HelpCircle
+  RefreshCw, Target, BookOpen, ThumbsUp, HelpCircle, Clock
 } from 'lucide-react'
 import StepProgress from '../../components/m2/StepProgress'
 import ExplainContent from '../../components/m2/ExplainContent'
 import VoicePlayButton from '../../components/m2/VoicePlayButton'
 import AskMoreButton from '../../components/m2/AskMoreButton'
-import { mockGenerateExplain, mockGetWrongQuestions } from '../../services/m2'
+import { mockGenerateExplain, mockGetWrongQuestions, mockGetExplainDetail } from '../../services/m2'
 
 const scrollbarStyles = `
   .explain-scroll::-webkit-scrollbar { width: 4px; }
@@ -100,11 +100,12 @@ function QuestionCard({ question, expanded, onToggle, onKnowledgePointClick }) {
   )
 }
 
-export default function ExplainPage({ onBack }) {
+export default function ExplainPage({ onBack, replayId }) {
   const [wrongQuestions, setWrongQuestions] = useState([])
   const [selectedQuestion, setSelectedQuestion] = useState(null)
   const [questionExpanded, setQuestionExpanded] = useState(true)
-  const [selectMode, setSelectMode] = useState(true)
+  const [selectMode, setSelectMode] = useState(!replayId)
+  const [replayData, setReplayData] = useState(null)
 
   const [explainSteps, setExplainSteps] = useState([])
   const [currentStep, setCurrentStep] = useState(0)
@@ -116,6 +117,30 @@ export default function ExplainPage({ onBack }) {
 
   const [feedback, setFeedback] = useState(null)
   const [toast, setToast] = useState(null)
+  const [replayLoading, setReplayLoading] = useState(false)
+
+  // 回放模式：加载历史讲题数据
+  useEffect(() => {
+    if (!replayId) return
+    const loadReplay = async () => {
+      setReplayLoading(true)
+      const data = await mockGetExplainDetail(replayId)
+      setReplayData(data)
+      setSelectedQuestion({
+        id: data.id,
+        questionContent: data.questionContent,
+        userAnswer: data.userAnswer,
+        correctAnswer: data.correctAnswer,
+        wrongReasonTag: data.wrongReasonTag,
+        knowledgePoints: data.knowledgePoints
+      })
+      setExplainSteps(data.steps || [])
+      setTip(data.tip || '')
+      setDone(true)
+      setReplayLoading(false)
+    }
+    loadReplay()
+  }, [replayId])
 
   useEffect(() => {
     if (toast) {
@@ -196,7 +221,7 @@ export default function ExplainPage({ onBack }) {
   }, [selectedQuestion])
 
   useEffect(() => {
-    if (selectedQuestion && !generating && explainSteps.length === 0) {
+    if (selectedQuestion && !generating && explainSteps.length === 0 && !replayId) {
       handleGenerate()
     }
   }, [selectedQuestion])
@@ -217,13 +242,13 @@ export default function ExplainPage({ onBack }) {
         }}
       >
         <header className="shrink-0 px-6 py-4 flex items-center justify-between border-b border-purple-400/20">
-          <button onClick={selectMode ? onBack : handleBackToList} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+          <button onClick={replayId ? onBack : (selectMode ? onBack : handleBackToList)} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">{selectMode ? '返回' : '换一题'}</span>
+            <span className="text-sm font-medium">{replayId ? '返回' : (selectMode ? '返回' : '换一题')}</span>
           </button>
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-200" />
-            <h1 className="text-lg font-bold text-white">AI 讲题</h1>
+            <h1 className="text-lg font-bold text-white">{replayId ? '讲题回放' : 'AI 讲题'}</h1>
           </div>
           <div className="w-16" />
         </header>
@@ -277,7 +302,24 @@ export default function ExplainPage({ onBack }) {
                   }}
                 />
 
-                {generating && explainSteps.length === 0 && (
+                {replayLoading && (
+                  <div className="mt-4 bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/10 text-center">
+                    <div className="w-10 h-10 mx-auto mb-3">
+                      <div className="w-10 h-10 border-3 border-purple-300/30 border-t-purple-400 rounded-full animate-spin" />
+                    </div>
+                    <p className="text-purple-200 text-sm font-medium">加载讲题记录...</p>
+                  </div>
+                )}
+
+                {replayData && !replayLoading && (
+                  <div className="mt-4 mb-2">
+                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-400/15">
+                      <Clock className="w-3 h-3" /> 历史回放 · {replayData.createdAt?.slice(0, 10)}
+                    </span>
+                  </div>
+                )}
+
+                {!replayId && generating && explainSteps.length === 0 && (
                   <div className="mt-4 bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/10 text-center">
                     <div className="w-10 h-10 mx-auto mb-3">
                       <div className="w-10 h-10 border-3 border-purple-300/30 border-t-purple-400 rounded-full animate-spin" />
@@ -359,7 +401,7 @@ export default function ExplainPage({ onBack }) {
                   </div>
                 )}
 
-                {done && (
+                {done && !replayId && (
                   <div className="mt-4 space-y-3">
                     <div className="flex gap-3">
                       <button
