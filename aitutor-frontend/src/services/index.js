@@ -28,6 +28,12 @@ export {
   SEMESTER,
 } from './courseService';
 
+// M6 学习画像服务
+export {
+  getLearningProfile,
+  getKnowledgePointDetail,
+} from './learningProfileService';
+
 // Token 管理
 export {
   saveToken,
