@@ -108,20 +108,34 @@ export async function matchQuestion(stem, subject, type) {
 /**
  * 获取错题列表
  * 对接人：杜恩泽（M1 Java）- GET /api/wrong-questions
- * 文档：M2_接口文档.md 接口6
+ * 文档：wrong-questions-api.ts
+ * 查询参数: { status?, chapter?, knowledgePoint? }
+ * 返回 ApiResponse → data: WrongQuestion[]
  */
 export async function getWrongQuestions(params = {}) {
   const query = new URLSearchParams(params).toString()
-  const res = await fetch(`/api/wrong-questions?${query}`)
+  const res = await fetch(`/api/wrong-questions${query ? `?${query}` : ''}`)
   return res.json()
 }
 
 /**
- * 加入错题本
- * 对接人：杜恩泽（M1 Java）- POST /api/wrong-questions
+ * 加入错题本（UI 本地状态）
+ * 注意：后端没有独立"加入错题本"接口
+ * 错题由 POST /api/practice/submit 提交答案时自动归入（答错自动进错题本）
+ * 此处仅做本地状态切换，不做实际 API 调用
  */
 export async function addToWrongBook(questionId) {
-  const res = await post('/api/wrong-questions', { questionId })
+  await new Promise(r => setTimeout(r, 300))
+  return { success: true, message: '已添加到错题本' }
+}
+
+/**
+ * 提交答案（答错自动进错题本）
+ * 对接人：杜恩泽（M1 Java）- POST /api/practice/submit
+ * 文档：wrong-questions-api.ts
+ */
+export async function submitAnswer(data) {
+  const res = await post('/api/practice/submit', data)
   return res.data
 }
 
