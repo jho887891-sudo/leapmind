@@ -28,6 +28,11 @@ export {
   SEMESTER,
 } from './courseService';
 
+// 对话服务（M7 ChatPanel）
+export {
+  default as chatService,
+} from './chatService';
+
 // M6 学习画像服务
 export {
   getLearningProfile,
