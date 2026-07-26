@@ -2,14 +2,14 @@
  * M4 即时讲课 - 路由容器
  *
  * 设计目的：把 M4 4 个页面（Create / Waiting / Present / History）的状态
- * 和路由**完全封装**在这个独立组件里。App.jsx 只需要一行 hash 触发：
- *   <M4LectureContainer hash={window.location.hash} onExit={onExit} />
+ * 和路由**完全封装**在这个独立组件里。App.jsx 通过 m4Page state 触发：
+ *   {m4Page === 'active' && <M4LectureContainer onExit={...} />}
  *
- * 这样 M4 组其他成员修改 App.jsx 不会和本组件冲突。
+ * 与 M2 的 m2Page 路由风格一致，统一使用 React state 管理模块级路由。
  *
  * 触发方式：
- *   - 浮动按钮点击 → 设置 hash → 组件 mount
- *   - 用户返回 → 清空 hash → 组件 unmount
+ *   - 浮动按钮点击 → setM4Page('active') → 组件 mount
+ *   - 用户返回 → setM4Page(null) → 组件 unmount
  *
  * 状态机：
  *   null → create → waiting → present

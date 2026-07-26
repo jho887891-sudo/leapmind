@@ -12,7 +12,7 @@ import ExplainPage from './pages/m2/ExplainPage';
 import ExplainHistoryPage from './pages/m2/ExplainHistoryPage';
 import LearningProfilePage from './pages/LearningProfilePage.jsx';
 import KnowledgePointDetailPage from './pages/KnowledgePointDetailPage.jsx';
-// M4 讲课流程 - 独立容器，通过 hash 路由触发，不污染主路由表
+// M4 讲课流程 - 独立容器，通过 m4Page state 触发，与 M2 路由风格一致
 import M4LectureContainer from './pages/lecture/M4LectureContainer';
 import { hasValidToken } from './utils/tokenManager';
 import { checkAuth, logout } from './services/authService';
@@ -27,14 +27,7 @@ export default function App() {
     const [m2Params, setM2Params] = useState({}); // 传递给 M2 页面的参数
     const [learningProfileView, setLearningProfileView] = useState(null); // null | overview | detail
     const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState(null);
-    // M4 路由：通过 location.hash 触发，与主路由完全隔离
-    const [m4Active, setM4Active] = useState(() => typeof window !== 'undefined' && window.location.hash === '#m4');
-
-    useEffect(() => {
-        const onHashChange = () => setM4Active(window.location.hash === '#m4');
-        window.addEventListener('hashchange', onHashChange);
-        return () => window.removeEventListener('hashchange', onHashChange);
-    }, []);
+    const [m4Page, setM4Page] = useState(null); // null | 'active' — M4 讲课全屏容器
 
     useEffect(() => {
         const checkSession = async () => {
@@ -87,14 +80,14 @@ export default function App() {
         setLearningProfileView('detail');
     };
 
-    // M4 入口/出口：浮动按钮设 hash，组件内部 onExit 清 hash
-    const handleLaunchM4 = () => { window.location.hash = '#m4'; setM4Active(true); };
-    const handleExitM4 = () => { window.location.hash = ''; setM4Active(false); };
+    // M4 入口/出口
+    const handleLaunchM4 = () => setM4Page('active');
+    const handleExitM4 = () => setM4Page(null);
 
     return (
         <div className={isAuthed ? "flex h-screen bg-slate-100 text-slate-800" : "w-full h-screen"}>
             <GlobalStyles />
-            {m4Active && isAuthed ? (
+            {m4Page === 'active' ? (
                 <M4LectureContainer onExit={handleExitM4} />
             ) : isChecking ? (
                 <div className="m-auto text-slate-600">检查会话中…</div>
