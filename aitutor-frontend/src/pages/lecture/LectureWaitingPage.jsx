@@ -17,8 +17,9 @@ import { Loader2, CheckCircle2, FileText, Play, ArrowLeft } from 'lucide-react';
 // 缩略图卡片：根据 slide.type 显示不同色彩预览
 const getPreviewStyle = (type) => {
   if (type === 'cover') return { bg: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)', text: 'text-white' };
-  if (type === 'ending') return { bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', text: 'text-white' };
-  if (type === 'example') return { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', text: 'text-white' };
+  if (type === 'summary') return { bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', text: 'text-white' };
+  if (type === 'homework') return { bg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', text: 'text-white' };
+  if (type === 'interactive') return { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', text: 'text-white' };
   return { bg: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', text: 'text-slate-600' };
 };
 
@@ -39,8 +40,9 @@ const SlideThumbnail = ({ slide, index, isNew }) => {
       >
         <span className={`text-[10px] lg:text-xs font-semibold ${style.text} opacity-90`}>
           {slide.type === 'cover' ? '封面' :
-           slide.type === 'ending' ? '结尾' :
-           slide.type === 'example' ? '例题' : '内容'}
+           slide.type === 'summary' ? '总结' :
+           slide.type === 'homework' ? '作业' :
+           slide.type === 'interactive' ? '互动' : '内容'}
         </span>
         <span className={`absolute top-1 right-1.5 text-[9px] font-bold px-1 py-0.5 rounded ${style.text === 'text-white' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
           p.{index + 1}
@@ -48,8 +50,8 @@ const SlideThumbnail = ({ slide, index, isNew }) => {
       </div>
       {/* 底部标题区 */}
       <div className="p-2 lg:p-2.5">
-        <p className="text-[11px] lg:text-sm font-semibold text-slate-700 line-clamp-1 leading-tight" title={slide.content.title}>
-          {slide.content.title}
+        <p className="text-[11px] lg:text-sm font-semibold text-slate-700 line-clamp-1 leading-tight" title={slide.title}>
+          {slide.title}
         </p>
       </div>
     </div>
