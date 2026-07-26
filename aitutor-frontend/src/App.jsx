@@ -12,8 +12,10 @@ import ExplainPage from './pages/m2/ExplainPage';
 import ExplainHistoryPage from './pages/m2/ExplainHistoryPage';
 import LearningProfilePage from './pages/LearningProfilePage.jsx';
 import KnowledgePointDetailPage from './pages/KnowledgePointDetailPage.jsx';
+// M4 讲课流程 - 独立容器，通过 hash 路由触发，不污染主路由表
+import M4LectureContainer from './pages/lecture/M4LectureContainer';
 import { hasValidToken } from './utils/tokenManager';
-import { checkAuth } from './services/authService';
+import { checkAuth, logout } from './services/authService';
 
 export default function App() {
     const [isChecking, setIsChecking] = useState(true);
@@ -25,6 +27,14 @@ export default function App() {
     const [m2Params, setM2Params] = useState({}); // 传递给 M2 页面的参数
     const [learningProfileView, setLearningProfileView] = useState(null); // null | overview | detail
     const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState(null);
+    // M4 路由：通过 location.hash 触发，与主路由完全隔离
+    const [m4Active, setM4Active] = useState(() => typeof window !== 'undefined' && window.location.hash === '#m4');
+
+    useEffect(() => {
+        const onHashChange = () => setM4Active(window.location.hash === '#m4');
+        window.addEventListener('hashchange', onHashChange);
+        return () => window.removeEventListener('hashchange', onHashChange);
+    }, []);
 
     useEffect(() => {
         const checkSession = async () => {
@@ -49,6 +59,13 @@ export default function App() {
         checkSession();
     }, []);
 
+    const handleLogout = () => {
+        logout();
+        setCurrentCourseId('');
+        setIsAuthed(false);
+        window.location.reload();
+    };
+
     const handleLoginSuccess = (user) => {
         console.log('登录成功，用户信息:', user);
         setIsAuthed(true);
@@ -70,10 +87,16 @@ export default function App() {
         setLearningProfileView('detail');
     };
 
+    // M4 入口/出口：浮动按钮设 hash，组件内部 onExit 清 hash
+    const handleLaunchM4 = () => { window.location.hash = '#m4'; setM4Active(true); };
+    const handleExitM4 = () => { window.location.hash = ''; setM4Active(false); };
+
     return (
         <div className={isAuthed ? "flex h-screen bg-slate-100 text-slate-800" : "w-full h-screen"}>
             <GlobalStyles />
-            {isChecking ? (
+            {m4Active && isAuthed ? (
+                <M4LectureContainer onExit={handleExitM4} />
+            ) : isChecking ? (
                 <div className="m-auto text-slate-600">检查会话中…</div>
             ) : !isAuthed ? (
                 guestRoute === 'profile' ? (
@@ -114,6 +137,7 @@ export default function App() {
                 showProfile ? (
                     <ProfilePage onBack={() => setShowProfile(false)} />
                 ) : (
+                    <div className="relative w-full h-full">
                     <TemHomePage 
                         onEnterProject={(courseId) => setCurrentCourseId(courseId)}
                         onOpenProfile={handleOpenProfile}
@@ -121,6 +145,16 @@ export default function App() {
                         onM2Explain={() => { setM2Params({}); setM2Page('explain'); }}
                         onOpenLearningProfile={handleOpenLearningProfile}
                     />
+                    {/* M4 讲课入口（浮动按钮，联调后可移除或整合到首页） */}
+                    <button
+                        onClick={handleLaunchM4}
+                        className="absolute bottom-6 right-6 flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 active:scale-95 transition-all text-sm font-medium z-40"
+                        title="AI 即时讲课"
+                    >
+                        <span className="text-lg">🎓</span>
+                        AI 讲课
+                    </button>
+                    </div>
                 )
             )}
         </div>
