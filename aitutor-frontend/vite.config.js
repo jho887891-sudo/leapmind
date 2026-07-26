@@ -63,8 +63,26 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
-        // OCR 识别（M7 图片上传 — Java 后端）
+        // M2 - OCR 识别
         '/api/ocr': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
+        // M2 - 讲题
+        '/api/explain': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
+        // M1 - 错题本
+        '/api/wrong-questions': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
+        // M6 用户画像、知识掌握度与复习提醒（Java 后端）
+        '/api/user-profile': {
           target: javaApi,
           changeOrigin: true,
           secure: false,
