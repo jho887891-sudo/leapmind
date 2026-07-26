@@ -76,6 +76,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/speech/**").authenticated()
                         // 语音对话接口需要认证
                         .requestMatchers("/api/voice-chat/**").authenticated()
+                        // 本地音频地址允许直接播放，其余虚拟教师接口需要认证
+                        .requestMatchers(HttpMethod.GET, "/api/virtual-teacher/audio/**").permitAll()
+                        .requestMatchers("/api/virtual-teacher/**").authenticated()
                         // 课程相关接口需要认证
                         .requestMatchers("/api/courses/**").authenticated()
                         // 管理员接口需要认证（具体权限由@AdminRequired注解控制）
