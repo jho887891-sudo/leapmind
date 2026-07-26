@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -9,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const javaApi = env.JAVA_API_TARGET  || 'http://localhost:8080'
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react()],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -54,24 +53,6 @@ export default defineConfig(({ mode }) => {
         },
         // 语音问答（Java 后端）
         '/api/voice-chat': {
-          target: javaApi,
-          changeOrigin: true,
-          secure: false,
-        },
-        // 对话服务（M7 ChatPanel — Java 后端）
-        '/api/conversation': {
-          target: javaApi,
-          changeOrigin: true,
-          secure: false,
-        },
-        // OCR 识别（M7 图片上传 — Java 后端）
-        '/api/ocr': {
-          target: javaApi,
-          changeOrigin: true,
-          secure: false,
-        },
-        // M8 虚拟教师形象、偏好与 TTS（Java 后端）
-        '/api/virtual-teacher': {
           target: javaApi,
           changeOrigin: true,
           secure: false,
