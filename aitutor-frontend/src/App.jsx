@@ -14,6 +14,8 @@ import LearningProfilePage from './pages/LearningProfilePage.jsx';
 import KnowledgePointDetailPage from './pages/KnowledgePointDetailPage.jsx';
 // M4 讲课流程 - 独立容器，通过 m4Page state 触发，与 M2 路由风格一致
 import M4LectureContainer from './pages/lecture/M4LectureContainer';
+// M1 做题页
+import PracticePage from './pages/PracticePage.jsx';
 import { hasValidToken } from './utils/tokenManager';
 import { checkAuth, logout } from './services/authService';
 
@@ -28,6 +30,7 @@ export default function App() {
     const [learningProfileView, setLearningProfileView] = useState(null); // null | overview | detail
     const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState(null);
     const [m4Page, setM4Page] = useState(null); // null | 'active' — M4 讲课全屏容器
+    const [m1Page, setM1Page] = useState(null); // null | 'practice' — M1 做题页
 
     useEffect(() => {
         const checkSession = async () => {
@@ -83,12 +86,15 @@ export default function App() {
     // M4 入口/出口
     const handleLaunchM4 = () => setM4Page('active');
     const handleExitM4 = () => setM4Page(null);
+    const handleLaunchM1 = () => setM1Page('practice');
 
     return (
         <div className={isAuthed ? "flex h-screen bg-slate-100 text-slate-800" : "w-full h-screen"}>
             <GlobalStyles />
             {m4Page === 'active' ? (
                 <M4LectureContainer onExit={handleExitM4} />
+            ) : m1Page === 'practice' ? (
+                <PracticePage onBack={() => setM1Page(null)} />
             ) : isChecking ? (
                 <div className="m-auto text-slate-600">检查会话中…</div>
             ) : !isAuthed ? (
@@ -137,6 +143,7 @@ export default function App() {
                         onM2PhotoQa={() => setM2Page('photo-qa')}
                         onM2Explain={() => { setM2Params({}); setM2Page('explain'); }}
                         onOpenLearningProfile={handleOpenLearningProfile}
+                        onM1Practice={handleLaunchM1}
                     />
                     {/* M4 讲课入口（浮动按钮，联调后可移除或整合到首页） */}
                     <button
