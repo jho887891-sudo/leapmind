@@ -76,6 +76,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        // M1 - 做题练习
+        '/api/practice': {
+          target: javaApi,
+          changeOrigin: true,
+          secure: false,
+        },
         // M1 - 错题本
         '/api/wrong-questions': {
           target: javaApi,

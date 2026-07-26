@@ -41,6 +41,7 @@ export default function LearningApp({
   onM2PhotoQa,
   onM2Explain,
   onOpenLearningProfile,
+  onM1Practice,
 }) {
   // UI 状态
   const [isGradeOpen, setIsGradeOpen] = useState(false)
@@ -455,6 +456,7 @@ export default function LearningApp({
     { id: 'photo-search', title: "拍照搜题", color: "from-pink-400 via-pink-300 to-orange-400", icon: "./svg/paizhaosouti.svg", action: onM2PhotoQa },
     { id: 'ai-explain', title: "AI 讲题", color: "from-purple-400 via-purple-300 to-indigo-500", icon: null, custom: true, action: onM2Explain },
     { id: 'learning-profile', title: "学情分析", color: "from-cyan-300 via-blue-300 to-blue-500", icon: "./svg/xueqingfenxi.svg", action: onOpenLearningProfile },
+    { id: 'm1-practice', title: "AI 做题", color: "from-emerald-400 via-green-400 to-teal-500", icon: null, custom: true, action: onM1Practice },
   ]
 
 
