@@ -72,6 +72,9 @@ public class SecurityConfig {
                         .requestMatchers("/admin/review/**").permitAll()
                         // 允许访问流式对话和打断接口
                         .requestMatchers("/api/conversation/**").permitAll()
+                        // TTS 音频需要允许浏览器直接播放，其余虚拟教师接口需要登录
+                        .requestMatchers(HttpMethod.GET, "/api/virtual-teacher/audio/**").permitAll()
+                        .requestMatchers("/api/virtual-teacher/**").authenticated()
                         // 语音合成和音频相关接口需要认证
                         .requestMatchers("/api/speech/**").authenticated()
                         // 语音对话接口需要认证
