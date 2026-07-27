@@ -31,6 +31,7 @@ export default function App() {
     const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState(null);
     const [m4Page, setM4Page] = useState(null); // null | 'active' — M4 讲课全屏容器
     const [m1Page, setM1Page] = useState(null); // null | 'practice' — M1 做题页
+    const [m1PracticeParams, setM1PracticeParams] = useState({}); // M1 做题页参数（mode/lessonId 等）
 
     useEffect(() => {
         const checkSession = async () => {
@@ -86,7 +87,12 @@ export default function App() {
     // M4 入口/出口
     const handleLaunchM4 = () => setM4Page('active');
     const handleExitM4 = () => setM4Page(null);
-    const handleLaunchM1 = () => setM1Page('practice');
+    const handleLaunchM1 = (params) => {
+      if (params && typeof params === 'object') {
+        setM1PracticeParams(params);
+      }
+      setM1Page('practice');
+    };
 
     return (
         <div className={isAuthed ? "flex h-screen bg-slate-100 text-slate-800" : "w-full h-screen"}>
@@ -94,7 +100,7 @@ export default function App() {
             {m4Page === 'active' ? (
                 <M4LectureContainer onExit={handleExitM4} />
             ) : m1Page === 'practice' ? (
-                <PracticePage onBack={() => setM1Page(null)} />
+                <PracticePage onBack={() => { setM1Page(null); setM1PracticeParams({}); }} mode={m1PracticeParams.mode} lessonId={m1PracticeParams.lessonId || ""} />
             ) : isChecking ? (
                 <div className="m-auto text-slate-600">检查会话中…</div>
             ) : !isAuthed ? (
