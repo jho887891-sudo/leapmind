@@ -279,7 +279,7 @@ export async function submitAnswer(params = {}) {
     questionId: params.questionId,
     userAnswer,
     durationSeconds: params.timeSpent || 0,
-    mode: 'SEQUENTIAL',
+    mode: params.mode || 'SEQUENTIAL',
   };
 
   try {
@@ -328,6 +328,24 @@ export async function dailyCheckin() {
   };
 }
 
+/**
+ * 查询签到状态  ✅ GET /api/practice/checkin/status
+ */
+export async function getCheckinStatus() {
+  try {
+    const res = await request('/api/practice/checkin/status');
+    const data = unwrap(res);
+    return {
+      checkedToday: data.checkedToday || false,
+      streakDays: data.streakDays || 0,
+      totalPoints: data.totalPoints || 0,
+    };
+  } catch (err) {
+    console.warn('[M1] getCheckinStatus 后端不可用:', err.message);
+    return { checkedToday: false, streakDays: 0, totalPoints: 0 };
+  }
+}
+
 // ============================================================================
 // 🔶 部分对接（数据字段不全，后续需要完善）
 // ============================================================================
@@ -370,13 +388,19 @@ export async function getWrongQuestions(params = {}) {
 }
 
 /**
- * 标记/取消重点  🔶 PATCH /api/practice/mistake-book/{id}
- * ⚠️ 需要先获取当前状态再取反，当前为桩实现
+ * 标记/取消重点  ✅ PUT /api/wrong-questions/{id}/focus
  */
-export async function toggleFocus(wrongQuestionId) {
-  // TODO: 先 GET /mistakes 获取当前 doubtful 值，再 PATCH 取反
-  console.warn('[M1] toggleFocus 暂未对接，需获取当前错题状态后再 PATCH');
-  return { success: false, reason: 'TODO: 对接 PATCH /api/practice/mistake-book/{id}' };
+export async function toggleFocus(wrongQuestionId, focused = true) {
+  try {
+    const res = await request('/api/wrong-questions/' + wrongQuestionId + '/focus', {
+      method: 'PUT',
+      body: JSON.stringify({ focused }),
+    });
+    return { success: true, data: unwrap(res) };
+  } catch (err) {
+    console.warn('[M1] toggleFocus 失败:', err.message);
+    return { success: false, reason: err.message };
+  }
 }
 
 /**
@@ -495,6 +519,9 @@ export async function generateSession(params = {}) {
   if (params.chapter) beParams.chapter = params.chapter;
   if (params.questionType) beParams.questionType = TYPE_FE_TO_BE[params.questionType] || params.questionType;
   if (params.difficulty) beParams.difficulty = DIFF_FE_TO_BE[params.difficulty] || params.difficulty;
+  if (params.lessonId) beParams.lessonId = params.lessonId;
+  // 课后题模式：传 AFTER_CLASS + lessonId 到 POST /submit 的 mode 字段
+  if (params.mode) beParams.mode = params.mode;
 
   try {
     const res = await request('/api/practice/questions' + buildQuery(beParams));
@@ -532,20 +559,144 @@ export async function generateSession(params = {}) {
 }
 
 /**
- * 删除错题  ❌ 后端无此接口
- * 💡 预期：后端增加 DELETE /api/practice/mistakes/{id} 或软删除标记
+ * 删除错题  ✅ DELETE /api/wrong-questions/{id}
  */
 export async function deleteWrongQuestion(wrongQuestionId) {
-  console.warn('[M1] deleteWrongQuestion 后端无对应接口，仅前端模拟');
+  try {
+    await request('/api/wrong-questions/' + wrongQuestionId, { method: 'DELETE' });
+    return { success: true };
+  } catch (err) {
+    console.warn('[M1] deleteWrongQuestion 失败:', err.message);
+    return { success: false, reason: err.message };
+  }
+}
+
+/**
+ * 获取积分明细  ✅ GET /api/practice/dashboard
+ */
+export async function getDashboard() {
+  try {
+    const res = await request('/api/practice/dashboard');
+    const data = unwrap(res);
+    return {
+      totalPoints: data.totalPoints || 0,
+      streakDays: data.streakDays || 0,
+      todayQuestions: data.todayQuestions || 0,
+      todayCorrect: data.todayCorrect || 0,
+      rank: data.rank || null,
+    };
+  } catch (err) {
+    console.warn('[M1] getDashboard 后端不可用:', err.message);
+    return { totalPoints: 0, streakDays: 0, todayQuestions: 0, todayCorrect: 0, rank: null };
+  }
+}
+
+/**
+ * 获取答题记录  ✅ GET /api/practice/records
+ */
+export async function getRecords(params = {}) {
+  const beParams = {};
+  if (params.range) beParams.range = params.range;
+  if (params.chapter) beParams.chapter = params.chapter;
+  if (params.knowledgePoint) beParams.knowledgePoint = params.knowledgePoint;
+  if (params.wrongOnly) beParams.wrongOnly = 'true';
+  const res = await request('/api/practice/records' + buildQuery(beParams));
+  return (unwrap(res) || []).map(r => ({
+    recordId: r.id,
+    questionId: r.questionId,
+    questionTitle: r.questionTitle || r.content || '',
+    userAnswer: r.userAnswer || '',
+    correctAnswer: r.correctAnswer || '',
+    isCorrect: Boolean(r.correct),
+    timeSpent: r.durationSeconds || 0,
+    createdAt: r.createdAt || '',
+  }));
+}
+
+/**
+ * 更新错题笔记  ✅ PATCH /api/practice/mistakes/{recordId}
+ */
+export async function updateMistake(recordId, body = {}) {
+  const payload = {};
+  if (body.doubtful !== undefined) payload.doubtful = body.doubtful;
+  if (body.reviewNote) payload.reviewNote = body.reviewNote;
+  if (body.status) payload.status = body.status;
+  const res = await request('/api/practice/mistakes/' + recordId, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+  return { success: true, data: unwrap(res) };
+}
+
+/**
+ * 更新隐私设置  ✅ PATCH /api/practice/privacy
+ */
+export async function updatePrivacy(hidden) {
+  await request('/api/practice/privacy', {
+    method: 'PATCH',
+    body: JSON.stringify({ hidden }),
+  });
   return { success: true };
 }
 
 /**
- * 获取积分明细  ❌ 后端无独立接口（数据散落在 dashboard）
- * 💡 预期：后端增加 GET /api/practice/points?range=week 独立积分接口
+ * 导出答题记录  ✅ GET /api/practice/export
+ * @returns {Blob} 文本文件下载
  */
-export async function getPointsHistory(params = {}) {
-  await _loadMock();
-  return _mockPoints;
+export async function exportRecords(wrongOnly = false) {
+  const url = '/api/practice/export?wrongOnly=' + (wrongOnly ? 'true' : 'false');
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('导出失败');
+  const blob = await res.blob();
+  const filename = wrongOnly ? 'mistakes.txt' : 'practice-records.txt';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  return { success: true };
+}
+
+/**
+ * 清空个人刷题数据  ✅ DELETE /api/practice/records
+ */
+export async function clearUserData() {
+  await request('/api/practice/records', { method: 'DELETE' });
+  return { success: true };
+}
+
+/**
+ * 导入题目  ✅ POST /api/practice/questions/import (multipart)
+ * @param {File} file - .xlsx 或 .csv 文件
+ */
+export async function importQuestions(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await request('/api/practice/questions/import', {
+    method: 'POST',
+    body: formData,
+  });
+  const data = unwrap(res);
+  return {
+    totalRows: data.totalRows || 0,
+    inserted: data.inserted || 0,
+    failed: data.failed || 0,
+    errors: data.errors || [],
+  };
+}
+
+/**
+ * 下载导入模板  ✅ GET /api/practice/questions/import-template
+ */
+export async function getImportTemplate() {
+  const res = await fetch('/api/practice/questions/import-template');
+  if (!res.ok) throw new Error('下载模板失败');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'practice-question-template.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  return { success: true };
 }
 

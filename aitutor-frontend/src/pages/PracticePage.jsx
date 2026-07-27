@@ -22,21 +22,27 @@ import {
   Trophy,
   BarChart3,
   Play,
+  Gift,
+  CalendarCheck,
 } from "lucide-react";
 import QuestionCard from "../components/practice/QuestionCard";
 import ProgressBar from "../components/practice/ProgressBar";
 import Timer from "../components/practice/Timer";
 import QuestionNav from "../components/practice/QuestionNav";
-import { generateSession, submitAnswer } from "../services/practiceService";
+import { generateSession, submitAnswer, dailyCheckin, getCheckinStatus } from "../services/practiceService";
 import { ChatPanel } from "../components/chat";
 import { getUserInfo } from "../utils/tokenManager";
 
 const SESSION_KEY = "m1_practice_session";
 
-export default function PracticePage({ onBack, onAskAI, embedded = false }) {
+export default function PracticePage({ onBack, onAskAI, embedded = false, mode = "FREE_PRACTICE", lessonId = "" }) {
   // --- ChatPanel 状态 ---
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const userInfo = getUserInfo();
+
+  // --- 签到状态 ---
+  const [checkinStatus, setCheckinStatus] = useState(null);
+  const [checkinLoading, setCheckinLoading] = useState(false);
 
   // --- 会话状态 ---
   const [session, setSession] = useState(null);
@@ -90,6 +96,8 @@ export default function PracticePage({ onBack, onAskAI, embedded = false }) {
         subject: "math",
         grade: "grade_8",
         questionCount: 7,
+        mode,
+        lessonId: lessonId || undefined,
       });
       setSession(data);
       setCurrentIndex(0);
@@ -114,6 +122,31 @@ export default function PracticePage({ onBack, onAskAI, embedded = false }) {
   const handleContinueSession = () => {
     setHasSavedSession(false);
     setLoading(false);
+  };
+
+  // --- 签到 ---
+  useEffect(() => {
+    getCheckinStatus().then(status => setCheckinStatus(status));
+  }, []);
+
+  const handleCheckin = async () => {
+    setCheckinLoading(true);
+    try {
+      const result = await dailyCheckin();
+      if (result.alreadyChecked) {
+        setCheckinStatus(prev => ({ ...prev, checkedToday: true, streakDays: result.streakDays || prev?.streakDays || 0 }));
+      } else {
+        setCheckinStatus(prev => ({
+          checkedToday: true,
+          streakDays: (prev?.streakDays || 0) + 1,
+          totalPoints: (prev?.totalPoints || 0) + (result.pointsEarned || 0),
+        }));
+      }
+    } catch (err) {
+      console.warn('签到失败:', err);
+    } finally {
+      setCheckinLoading(false);
+    }
   };
 
   const currentQuestion = session?.questions?.[currentIndex];
@@ -146,6 +179,7 @@ export default function PracticePage({ onBack, onAskAI, embedded = false }) {
         _originalId: currentQuestion._originalId,
         answer: currentAnswer.selectedAnswer,
         timeSpent: currentAnswer.timeSpent,
+        mode,
       });
       setAnswers((prev) => ({
         ...prev,
@@ -329,11 +363,30 @@ export default function PracticePage({ onBack, onAskAI, embedded = false }) {
               <ArrowLeft size={16} /> 退出练习
             </button>
           )}
-          <Timer
-            isRunning={!currentAnswer?.submitted}
-            onTick={handleTick}
-            resetKey={currentQuestion?.questionId}
-          />
+          <div className="flex items-center gap-3">
+            {/* 签到按钮 */}
+            {!checkinStatus?.checkedToday && (
+              <button
+                onClick={handleCheckin}
+                disabled={checkinLoading}
+                className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-100 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Gift size={14} />
+                {checkinLoading ? '签到中...' : '签到领积分'}
+              </button>
+            )}
+            {checkinStatus?.checkedToday && (
+              <span className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-medium">
+                <CalendarCheck size={14} />
+                已签到{checkinStatus.streakDays > 0 ? ` · 连签${checkinStatus.streakDays}天` : ''}
+              </span>
+            )}
+            <Timer
+              isRunning={!currentAnswer?.submitted}
+              onTick={handleTick}
+              resetKey={currentQuestion?.questionId}
+            />
+          </div>
         </div>
 
         {/* 进度条 */}

@@ -4,7 +4,7 @@
  * 左侧筛选面板 + 右侧题目列表
  * 筛选条件：科目 → 年级 → 章节 → 题型 → 难度
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Search,
   Filter,
@@ -14,10 +14,13 @@ import {
   BookOpen,
   SlidersHorizontal,
   X,
+  Upload,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
-import { getQuestions, getFilterOptions } from "../services/practiceService";
+import { getQuestions, getFilterOptions, importQuestions, getImportTemplate } from "../services/practiceService";
 
-export default function QuestionBankPage({ onStartPractice }) {
+export default function QuestionBankPage({ onStartPractice, lessonId = "" }) {
   // 筛选条件
   const [filterOptions, setFilterOptions] = useState(null);
   const [filters, setFilters] = useState({
@@ -26,6 +29,7 @@ export default function QuestionBankPage({ onStartPractice }) {
     chapter: "",
     type: "",
     difficulty: "",
+    lessonId: lessonId || "",
   });
   const [searchKeyword, setSearchKeyword] = useState("");
 
@@ -38,6 +42,13 @@ export default function QuestionBankPage({ onStartPractice }) {
   // UI
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [expandedSection, setExpandedSection] = useState("subject");
+
+  // 导入状态
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  // 文件输入 ref
+  const fileInputRef = useRef(null);
 
   // 加载筛选选项
   useEffect(() => {
@@ -75,9 +86,38 @@ export default function QuestionBankPage({ onStartPractice }) {
   };
 
   const clearFilters = () => {
-    setFilters({ subject: "", grade: "", chapter: "", type: "", difficulty: "" });
+    setFilters({ subject: "", grade: "", chapter: "", type: "", difficulty: "", lessonId: "" });
     setSearchKeyword("");
     setPage(1);
+  };
+
+  // 导入 Excel/CSV
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const result = await importQuestions(file);
+      setImportResult(result);
+      // 刷新列表
+      loadQuestions();
+    } catch (err) {
+      setImportResult({ inserted: 0, failed: 1, errors: [err.message] });
+    } finally {
+      setImporting(false);
+      // 重置 input 以便再次选择同一文件
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // 下载导入模板
+  const handleDownloadTemplate = async () => {
+    try {
+      await getImportTemplate();
+    } catch (err) {
+      console.warn('下载模板失败:', err);
+    }
   };
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
@@ -234,12 +274,73 @@ export default function QuestionBankPage({ onStartPractice }) {
 
         {/* 开始练习 */}
         <button
-          onClick={() => onStartPractice?.()}
+          onClick={() => onStartPractice?.({
+            subject: filters.subject || undefined,
+            grade: filters.grade || undefined,
+            chapter: filters.chapter || undefined,
+            type: filters.type || undefined,
+            difficulty: filters.difficulty || undefined,
+            lessonId: filters.lessonId || undefined,
+          })}
           className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-500 text-white rounded-xl text-sm font-semibold hover:bg-indigo-600 transition-colors cursor-pointer"
         >
           <Play size={16} /> 开始练习
         </button>
+
+        {/* 导入题目 */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.csv"
+          onChange={handleImportFile}
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={importing}
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors cursor-pointer"
+          title="批量导入题目（支持 .xlsx / .csv）"
+        >
+          {importing ? (
+            <><div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> 导入中...</>
+          ) : (
+            <><Upload size={16} /> 导入</>
+          )}
+        </button>
+        {/* 下载模板 */}
+        <button
+          onClick={handleDownloadTemplate}
+          className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-500 hover:bg-slate-50 transition-colors cursor-pointer"
+          title="下载 CSV 导入模板"
+        >
+          <Download size={16} />
+        </button>
       </div>
+
+      {/* 导入结果提示 */}
+      {importResult && (
+        <div className={`mb-4 px-4 py-3 rounded-xl text-sm ${
+          importResult.failed === 0 && importResult.inserted > 0
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : importResult.errors?.length > 0
+              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+              : ''
+        }`}>
+          {importResult.inserted > 0 && (
+            <span>✅ 成功导入 {importResult.inserted} 题</span>
+          )}
+          {importResult.failed > 0 && (
+            <span className="ml-3">⚠️ {importResult.failed} 条失败</span>
+          )}
+          {importResult.errors?.map((err, i) => (
+            <div key={i} className="text-xs mt-1 opacity-75">{err}</div>
+          ))}
+          <button
+            onClick={() => setImportResult(null)}
+            className="ml-3 text-xs underline cursor-pointer"
+          >关闭</button>
+        </div>
+      )}
 
       <div className="flex gap-6">
         {/* 左侧筛选面板 - 桌面端 */}
