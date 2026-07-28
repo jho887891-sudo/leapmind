@@ -158,6 +158,53 @@ export async function askVirtualTeacherQuestion({ courseId, question }) {
   return data;
 }
 
+function htmlToText(value) {
+  const html = String(value || '').trim();
+  if (!html) return '';
+  if (typeof DOMParser === 'undefined') {
+    return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  const documentNode = new DOMParser().parseFromString(html, 'text/html');
+  return (documentNode.body?.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeCourseSlide(slide, index) {
+  const text = htmlToText(slide?.htmlContent ?? slide?.content);
+  const title = slide?.title || `第 ${index + 1} 页`;
+  return {
+    id: String(slide?.slideId ?? slide?.id ?? `slide-${index + 1}`),
+    index: Number(slide?.slideIndex ?? index),
+    title,
+    subtitle: slide?.contentType || '课程课件',
+    points: text ? [text] : ['本页暂无文字内容'],
+    script: text || `现在讲解${title}。`,
+    htmlContent: slide?.htmlContent || '',
+  };
+}
+
+export async function fetchVirtualTeacherLesson(courseId) {
+  const normalizedCourseId = String(courseId || '').trim();
+  if (!normalizedCourseId) return null;
+
+  const response = await get(`/api/courses/${encodeURIComponent(normalizedCourseId)}/slides-data`);
+  const data = unwrap(response);
+  const items = Array.isArray(data) ? data : data?.items ?? data?.records ?? [];
+  const slides = items
+    .map(normalizeCourseSlide)
+    .sort((left, right) => left.index - right.index);
+  if (!slides.length) return null;
+
+  return {
+    id: normalizedCourseId,
+    title: slides[0]?.title || '课程讲解',
+    tag: '正式课件',
+    content: slides[0]?.script || '',
+    prompt: `关于“${slides[0]?.title || '本节内容'}”，你最想进一步理解什么？`,
+    slides,
+    source: 'api',
+  };
+}
+
 export async function synthesizeVirtualTeacherSpeech({
   courseId,
   text,

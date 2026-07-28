@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';  
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import GlobalStyles from './styles/GlobalStyles.jsx';
 import LoginPage from './pages/LoginPage';
 import LoginPage2 from './pages/LoginPage2.jsx';
@@ -7,7 +7,6 @@ import LecturePage from './pages/LecturePage';
 import LecturePage2 from './pages/LecturePage2';
 import TemHomePage from './pages/TemHomePage';
 import ProfilePage from './pages/ProfilePage.jsx';
-import TeacherAvatarPage from './pages/TeacherAvatarPage.jsx';
 import PhotoQAPage from './pages/m2/PhotoQAPage';
 import ExplainPage from './pages/m2/ExplainPage';
 import ExplainHistoryPage from './pages/m2/ExplainHistoryPage';
@@ -18,7 +17,9 @@ import M4LectureContainer from './pages/lecture/M4LectureContainer';
 // M1 做题页
 import PracticePage from './pages/PracticePage.jsx';
 import { hasValidToken } from './utils/tokenManager';
-import { checkAuth, logout } from './services/authService';
+import { checkAuth } from './services/authService';
+
+const TeacherAvatarPage = lazy(() => import('./pages/TeacherAvatarPage.jsx'));
 
 export default function App() {
     const [isChecking, setIsChecking] = useState(true);
@@ -27,6 +28,7 @@ export default function App() {
     const [guestRoute, setGuestRoute] = useState('home'); // home | profile
     const [showProfile, setShowProfile] = useState(false);
     const [showTeacherAvatar, setShowTeacherAvatar] = useState(false);
+    const [teacherCourseId, setTeacherCourseId] = useState('');
     const [m2Page, setM2Page] = useState(null); // null | 'photo-qa' | 'explain' | 'explain-history'
     const [m2Params, setM2Params] = useState({}); // 传递给 M2 页面的参数
     const [learningProfileView, setLearningProfileView] = useState(null); // null | overview | detail
@@ -57,16 +59,6 @@ export default function App() {
         };
         checkSession();
     }, []);
-
-    const handleLogout = () => {
-        logout();
-        setCurrentCourseId('');
-        setShowTeacherAvatar(false);
-        setLearningProfileView(null);
-        setSelectedKnowledgePointId(null);
-        setIsAuthed(false);
-        window.location.reload();
-    };
 
     const handleLoginSuccess = (user) => {
         console.log('登录成功，用户信息:', user);
@@ -144,7 +136,15 @@ export default function App() {
                     onOpenKnowledgePoint={handleOpenKnowledgePoint}
                 />
             ) : showTeacherAvatar ? (
-                <TeacherAvatarPage onBack={() => setShowTeacherAvatar(false)} />
+                <Suspense fallback={<div className="m-auto text-slate-600">正在加载虚拟教师课堂…</div>}>
+                    <TeacherAvatarPage
+                        courseId={teacherCourseId}
+                        onBack={() => {
+                            setShowTeacherAvatar(false);
+                            setTeacherCourseId('');
+                        }}
+                    />
+                </Suspense>
             ) : (
                 showProfile ? (
                     <ProfilePage onBack={() => setShowProfile(false)} />
@@ -155,7 +155,10 @@ export default function App() {
                         onOpenProfile={handleOpenProfile}
                         onM2PhotoQa={() => setM2Page('photo-qa')}
                         onM2Explain={() => { setM2Params({}); setM2Page('explain'); }}
-                        onOpenTeacherAvatar={() => setShowTeacherAvatar(true)}
+                        onOpenTeacherAvatar={(courseId = '') => {
+                            setTeacherCourseId(courseId);
+                            setShowTeacherAvatar(true);
+                        }}
                         onOpenLearningProfile={handleOpenLearningProfile}
                         onM1Practice={handleLaunchM1}
                     />

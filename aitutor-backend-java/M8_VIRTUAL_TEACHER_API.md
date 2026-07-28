@@ -431,3 +431,44 @@ Content-Type: application/json
 - `/api/voice-chat/ask` 真实 AI 答疑
 - M6 `record-event` 提问行为写入
 - TTS 语音合成调用与失败降级
+
+### 9.1 正式课程课件接入
+
+从首页课程卡片点击“AI 教师”时，前端会把该课程的 `courseId` 传入 M8 页面，并请求：
+
+```http
+GET /api/courses/{courseId}/slides-data
+Authorization: Bearer <JWT>
+```
+
+返回的每一页课件包含：
+
+| 字段 | 类型 | 用途 |
+|---|---|---|
+| `courseId` | string | 课程/会话 ID |
+| `slideIndex` | integer | 页面顺序，后端按升序返回 |
+| `slideId` | string | 页面业务 ID，用于 M6 行为记录 |
+| `title` | string | 课件标题 |
+| `contentType` | string | 页面类型 |
+| `htmlContent` | string | 课件正文，前端提取讲稿文本并保留原始 HTML |
+
+正式数据链路：
+
+```text
+首页课程卡片
+  -> onOpenTeacherAvatar(courseId)
+  -> TeacherAvatarPage(courseId)
+  -> GET /api/courses/{courseId}/slides-data
+  -> VRM 3D 场景内展示课件
+  -> POST /api/voice-chat/ask
+  -> POST /api/virtual-teacher/tts
+  -> POST /api/user-profile/{userId}/record-event
+```
+
+如果课程没有课件或接口暂时不可用，页面会明确显示“当前为演示”，并使用内置课件降级；不会把演示数据标记为正式课程。
+
+### 9.2 生产安全配置
+
+`application.yml` 不再保存 AI、阿里云、百度云等明文凭据，部署时必须通过环境变量注入。曾提交到 Git 历史中的旧凭据不能仅靠删除文件保证安全，必须在对应云平台禁用并轮换。
+
+生产环境数据库同样不再提供默认账号密码，启动前至少需要设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`。AI/TTS 按实际供应商设置 `AI_API_KEY`、`ALIYUN_ACCESS_KEY_ID`、`ALIYUN_ACCESS_KEY_SECRET`、`TTS_APP_KEY`，以及百度语音相关环境变量。

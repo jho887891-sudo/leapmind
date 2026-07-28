@@ -21,6 +21,7 @@ import VirtualTeacherViewer from '@/components/virtualTeacher/VirtualTeacherView
 import {
   DEFAULT_TEACHER_AVATARS,
   askVirtualTeacherQuestion,
+  fetchVirtualTeacherLesson,
   fetchTeacherAvatars,
   fetchTeacherPreference,
   saveTeacherPreference,
@@ -95,7 +96,7 @@ const DEMO_LESSONS = [
   },
 ];
 
-export default function TeacherAvatarPage({ onBack }) {
+export default function TeacherAvatarPage({ courseId = '', onBack }) {
   const [avatars, setAvatars] = useState(DEFAULT_TEACHER_AVATARS);
   const [selectedId, setSelectedId] = useState(DEFAULT_TEACHER_AVATARS[0].id);
   const [savedId, setSavedId] = useState(null);
@@ -103,6 +104,8 @@ export default function TeacherAvatarPage({ onBack }) {
   const [viewer, setViewer] = useState(null);
   const [demoState, setDemoState] = useState('');
   const [activeLessonId, setActiveLessonId] = useState(DEMO_LESSONS[0].id);
+  const [lessons, setLessons] = useState(DEMO_LESSONS);
+  const [lessonSource, setLessonSource] = useState(courseId ? 'loading' : 'demo');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState([
     { role: 'teacher', text: '我已经准备好讲解了。你可以先点“开始讲解”，也可以直接问一个问题。' },
@@ -130,14 +133,50 @@ export default function TeacherAvatarPage({ onBack }) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    if (!courseId) {
+      setLessons(DEMO_LESSONS);
+      setActiveLessonId(DEMO_LESSONS[0].id);
+      setLessonSource('demo');
+      return () => {
+        active = false;
+      };
+    }
+
+    setLessonSource('loading');
+    fetchVirtualTeacherLesson(courseId)
+      .then((lesson) => {
+        if (!active) return;
+        if (lesson) {
+          setLessons([lesson]);
+          setActiveLessonId(lesson.id);
+          setLessonSource('api');
+        } else {
+          setLessons(DEMO_LESSONS);
+          setActiveLessonId(DEMO_LESSONS[0].id);
+          setLessonSource('empty');
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setLessons(DEMO_LESSONS);
+        setActiveLessonId(DEMO_LESSONS[0].id);
+        setLessonSource('error');
+      });
+    return () => {
+      active = false;
+    };
+  }, [courseId]);
+
   const selected = useMemo(
     () => avatars.find((avatar) => avatar.id === selectedId) ?? avatars[0],
     [avatars, selectedId],
   );
 
   const activeLesson = useMemo(
-    () => DEMO_LESSONS.find((lesson) => lesson.id === activeLessonId) ?? DEMO_LESSONS[0],
-    [activeLessonId],
+    () => lessons.find((lesson) => lesson.id === activeLessonId) ?? lessons[0] ?? DEMO_LESSONS[0],
+    [activeLessonId, lessons],
   );
 
   const currentSlide = activeLesson.slides[currentSlideIndex] ?? activeLesson.slides[0];
@@ -482,7 +521,7 @@ export default function TeacherAvatarPage({ onBack }) {
               </button>
             </div>
             <div className="mb-5 flex flex-wrap gap-2">
-              {DEMO_LESSONS.map((lesson) => (
+              {lessons.map((lesson) => (
                 <button
                   key={lesson.id}
                   type="button"
@@ -496,6 +535,23 @@ export default function TeacherAvatarPage({ onBack }) {
                   {lesson.tag}
                 </button>
               ))}
+              <span className={`rounded-full border px-3 py-2 text-xs font-bold ${
+                lessonSource === 'api'
+                  ? 'border-emerald-300/40 bg-emerald-300/15 text-emerald-100'
+                  : lessonSource === 'loading'
+                    ? 'border-cyan-300/40 bg-cyan-300/15 text-cyan-100'
+                    : 'border-amber-300/40 bg-amber-300/15 text-amber-100'
+              }`}>
+                {lessonSource === 'api'
+                  ? `正式课程 · ${courseId}`
+                  : lessonSource === 'loading'
+                    ? '正在加载正式课件'
+                    : lessonSource === 'empty'
+                      ? '该课程暂无课件 · 当前为演示'
+                      : lessonSource === 'error'
+                        ? '课件接口不可用 · 当前为演示'
+                        : '演示课件'}
+              </span>
             </div>
             <p className="rounded-3xl border border-white/10 bg-indigo-950/25 p-5 text-base leading-8 text-purple-50/90">
               {currentSlide.script}
