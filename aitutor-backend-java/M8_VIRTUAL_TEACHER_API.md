@@ -299,7 +299,8 @@ VIRTUAL_TEACHER_DAILY_CHARACTERS=20000
 迁移文件：
 
 ```text
-src/main/resources/db/migration/V3__add_virtual_teacher.sql
+src/main/resources/db/migration/V4__add_virtual_teacher.sql
+src/main/resources/db/migration/V5__add_virtual_teacher_audit.sql
 ```
 
 新增表：
@@ -356,3 +357,43 @@ mvn test
 - 缓存命中时不调用第三方 TTS
 - 缓存未命中时合成、存储并写入缓存
 - 用户请求会触发限流检查和审计日志记录
+
+## 9. 前端对接说明
+
+M8 前端当前对接文件：
+
+```text
+aitutor-frontend/src/services/virtualTeacherService.js
+aitutor-frontend/src/pages/TeacherAvatarPage.jsx
+aitutor-frontend/src/components/virtualTeacher/VirtualTeacherViewer.jsx
+```
+
+字段兼容规则：
+
+| 后端字段 | 前端使用 | 说明 |
+|---|---|---|
+| id | avatar.id | 教师形象业务 ID，用于保存偏好 |
+| name | avatar.name | 页面展示名称 |
+| description | avatar.description | 教师设定说明 |
+| modelUrl | avatar.modelUrl | VRM 模型地址 |
+| voiceType | avatar.voiceType | TTS 音色 |
+| accent | avatar.accent | 口音/语言说明 |
+| speed | avatar.speed | 语速，后续可接入页面调节 |
+
+前端容错：
+
+- `/avatars` 不可用时，使用内置三套 VRM 演示形象。
+- `/preference` 不可用时，读取浏览器本地偏好。
+- `/preference` 保存失败但非 401 时，偏好保存在本地浏览器，并提示“后端接口尚未连通”。
+- `/tts` 不可用时，页面保留 3D 教师动作演示，并在课堂互动消息中提示语音接口暂不可用。
+
+当前 M8 页面已包含：
+
+- VRM 3D 教师预览
+- 教师形象选择
+- 用户教师偏好保存
+- 表情与头部动作预览
+- 教学内容展示
+- 开始讲解按钮
+- 课堂提问与教师反馈
+- TTS 语音合成调用与失败降级
