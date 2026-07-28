@@ -20,23 +20,15 @@ const TeacherPanel = ({ dark = false }) => {
         try {
             // 若正在播放讲课，则走统一的打断问答流程（内部含暂停与恢复）
             if (state.isPlaying && !state.isInterrupted) {
-                await handleVoiceInterruption(text);
-                // handleVoiceInterruption 内部负责显示“正在处理”、请求回答、TTS播报、播报完调用 resumePlayback
-                // 本对话面板仍需保留记录，因此上方已先行插入用户与打字占位
-                // 这里补充 AI 文本消息：与 handleVoiceInterruption 返回的答案保持一致
-                // 由于 handleVoiceInterruption 会设置 UI 文案，这里以再次拉取为准
-                try {
-                    const courseId = state.currentCourseId || '';
-                    const result = await askQuestion(courseId, text);
-                    const answer = result?.answer || '（无回答）';
-                    setMessages(prev => {
-                        const next = [...prev];
-                        const idx = next.findIndex(m => m.isTyping);
-                        if (idx !== -1) next[idx] = { sender: 'ai', text: answer };
-                        else next.push({ sender: 'ai', text: answer });
-                        return next;
-                    });
-                } catch {}
+                const result = await handleVoiceInterruption(text);
+                const answer = result?.answer || '（无回答）';
+                setMessages(prev => {
+                    const next = [...prev];
+                    const idx = next.findIndex(m => m.isTyping);
+                    if (idx !== -1) next[idx] = { sender: 'ai', text: answer };
+                    else next.push({ sender: 'ai', text: answer });
+                    return next;
+                });
                 return;
             }
 

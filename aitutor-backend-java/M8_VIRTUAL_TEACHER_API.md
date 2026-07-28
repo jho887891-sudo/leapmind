@@ -299,7 +299,8 @@ VIRTUAL_TEACHER_DAILY_CHARACTERS=20000
 迁移文件：
 
 ```text
-src/main/resources/db/migration/V3__add_virtual_teacher.sql
+src/main/resources/db/migration/V4__add_virtual_teacher.sql
+src/main/resources/db/migration/V5__add_virtual_teacher_audit.sql
 ```
 
 新增表：
@@ -356,3 +357,118 @@ mvn test
 - 缓存命中时不调用第三方 TTS
 - 缓存未命中时合成、存储并写入缓存
 - 用户请求会触发限流检查和审计日志记录
+
+## 9. 前端对接说明
+
+M8 前端当前对接文件：
+
+```text
+aitutor-frontend/src/services/virtualTeacherService.js
+aitutor-frontend/src/pages/TeacherAvatarPage.jsx
+aitutor-frontend/src/components/virtualTeacher/VirtualTeacherViewer.jsx
+```
+
+字段兼容规则：
+
+| 后端字段 | 前端使用 | 说明 |
+|---|---|---|
+| id | avatar.id | 教师形象业务 ID，用于保存偏好 |
+| name | avatar.name | 页面展示名称 |
+| description | avatar.description | 教师设定说明 |
+| modelUrl | avatar.modelUrl | VRM 模型地址 |
+| voiceType | avatar.voiceType | TTS 音色 |
+| accent | avatar.accent | 口音/语言说明 |
+| speed | avatar.speed | 语速，后续可接入页面调节 |
+
+前端容错：
+
+- `/avatars` 不可用时，使用内置三套 VRM 演示形象。
+- `/preference` 不可用时，读取浏览器本地偏好。
+- `/preference` 保存失败但非 401 时，偏好保存在本地浏览器，并提示“后端接口尚未连通”。
+- `/tts` 不可用时，页面保留 3D 教师动作演示，并在课堂互动消息中提示语音接口暂不可用。
+
+课堂互动已改为真实后端链路，不再由前端拼接固定答案：
+
+```http
+POST /api/voice-chat/ask
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "courseId": "limit",
+  "question": "为什么极限存在不要求函数在该点有定义？"
+}
+```
+
+成功响应：
+
+```json
+{
+  "answer": "AI 教师回答内容",
+  "courseId": "limit",
+  "status": "SUCCESS"
+}
+```
+
+用户提问同时通过 M6 正式事件接口记录为 `lecture_interact` / `M4` / `ask`，
+用于后续更新学习画像。M8 是形象与呈现层，因此事件归属 M4 讲课模块。
+
+登录对接注意事项：
+
+- Java 登录响应字段为 `data.userInfo`，前端兼容旧字段 `data.user`。
+- Java `expiresIn` 当前为毫秒，前端会归一化为秒后保存。
+- TTS 返回相对 `audioUrl` 时，前端会自动拼接 `VITE_API_BASE`；MinIO 预签名绝对地址直接使用。
+
+当前 M8 页面已包含：
+
+- VRM 3D 教师预览
+- 教师形象选择
+- 用户教师偏好保存
+- 表情与头部动作预览
+- 教学内容展示
+- 开始讲解按钮
+- 课堂提问与教师反馈
+- `/api/voice-chat/ask` 真实 AI 答疑
+- M6 `record-event` 提问行为写入
+- TTS 语音合成调用与失败降级
+
+### 9.1 正式课程课件接入
+
+从首页课程卡片点击“AI 教师”时，前端会把该课程的 `courseId` 传入 M8 页面，并请求：
+
+```http
+GET /api/courses/{courseId}/slides-data
+Authorization: Bearer <JWT>
+```
+
+返回的每一页课件包含：
+
+| 字段 | 类型 | 用途 |
+|---|---|---|
+| `courseId` | string | 课程/会话 ID |
+| `slideIndex` | integer | 页面顺序，后端按升序返回 |
+| `slideId` | string | 页面业务 ID，用于 M6 行为记录 |
+| `title` | string | 课件标题 |
+| `contentType` | string | 页面类型 |
+| `htmlContent` | string | 课件正文，前端提取讲稿文本并保留原始 HTML |
+
+正式数据链路：
+
+```text
+首页课程卡片
+  -> onOpenTeacherAvatar(courseId)
+  -> TeacherAvatarPage(courseId)
+  -> GET /api/courses/{courseId}/slides-data
+  -> VRM 3D 场景内展示课件
+  -> POST /api/voice-chat/ask
+  -> POST /api/virtual-teacher/tts
+  -> POST /api/user-profile/{userId}/record-event
+```
+
+如果课程没有课件或接口暂时不可用，页面会明确显示“当前为演示”，并使用内置课件降级；不会把演示数据标记为正式课程。
+
+### 9.2 生产安全配置
+
+`application.yml` 不再保存 AI、阿里云、百度云等明文凭据，部署时必须通过环境变量注入。曾提交到 Git 历史中的旧凭据不能仅靠删除文件保证安全，必须在对应云平台禁用并轮换。
+
+生产环境数据库同样不再提供默认账号密码，启动前至少需要设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`。AI/TTS 按实际供应商设置 `AI_API_KEY`、`ALIYUN_ACCESS_KEY_ID`、`ALIYUN_ACCESS_KEY_SECRET`、`TTS_APP_KEY`，以及百度语音相关环境变量。
