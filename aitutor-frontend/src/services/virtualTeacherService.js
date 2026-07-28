@@ -1,4 +1,4 @@
-import { ApiError, get, put } from './api';
+import { ApiError, get, post, put } from './api';
 import { getToken } from '@/utils/tokenManager.js';
 import {
   normalizeAnimationPayload,
@@ -48,6 +48,7 @@ function normalizeAvatar(avatar, index) {
     description: avatar.description ?? avatar.introduction ?? 'LeapMind 虚拟教师',
     modelUrl: avatar.modelUrl ?? avatar.vrmUrl ?? avatar.avatarUrl,
     voiceType: avatar.voiceType ?? avatar.voice ?? 'default',
+    speed: Number(avatar.speed ?? 1),
     accent: avatar.accent ?? '普通话',
     color: avatar.color ?? DEFAULT_TEACHER_AVATARS[index % DEFAULT_TEACHER_AVATARS.length].color,
   };
@@ -97,6 +98,7 @@ export async function saveTeacherPreference(avatar) {
     await put('/api/virtual-teacher/preference', {
       avatarId: preference.id,
       voiceType: preference.voiceType,
+      speed: preference.speed,
     });
     return { preference, synced: true };
   } catch (error) {
@@ -110,6 +112,13 @@ function getApiBase() {
   return value.endsWith('/') ? value.slice(0, -1) : value;
 }
 
+function resolveApiUrl(value) {
+  if (!value || /^(?:https?:|blob:|data:)/i.test(value)) return value;
+  const base = getApiBase();
+  const path = value.startsWith('/') ? value : `/${value}`;
+  return `${base}${path}`;
+}
+
 async function readAudioResponse(response) {
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
@@ -117,7 +126,7 @@ async function readAudioResponse(response) {
     const data = unwrap(body);
     const audioUrl = data?.audioUrl ?? data?.url;
     if (!audioUrl) return null;
-    const audioResponse = await fetch(audioUrl);
+    const audioResponse = await fetch(resolveApiUrl(audioUrl));
     if (!audioResponse.ok) return null;
     return {
       audioBlob: await audioResponse.blob(),
@@ -130,6 +139,23 @@ async function readAudioResponse(response) {
     animation: null,
     durationMs: Number(response.headers.get('x-audio-duration-ms')) || undefined,
   };
+}
+
+export async function askVirtualTeacherQuestion({ courseId, question }) {
+  const normalizedQuestion = String(question || '').trim();
+  if (!normalizedQuestion) {
+    throw new ApiError('请输入问题', 400);
+  }
+
+  const response = await post('/api/voice-chat/ask', {
+    courseId: String(courseId || 'virtual-teacher'),
+    question: normalizedQuestion,
+  });
+  const data = unwrap(response);
+  if (!data?.answer || String(data.status || 'SUCCESS').toUpperCase() !== 'SUCCESS') {
+    throw new ApiError(data?.answer || 'AI 教师暂时无法回答', 502, data);
+  }
+  return data;
 }
 
 export async function synthesizeVirtualTeacherSpeech({

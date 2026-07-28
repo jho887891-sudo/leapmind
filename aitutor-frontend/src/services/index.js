@@ -53,6 +53,7 @@ export {
 export {
   getLearningProfile,
   getKnowledgePointDetail,
+  markReviewReminder,
   saveLearningEvent,
   recordQuestionContext,
   LEARNING_EVENT_TYPES,

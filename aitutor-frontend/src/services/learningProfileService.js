@@ -11,6 +11,7 @@ import { get, post } from './api';
 const PROFILE_ENDPOINT = (userId) => `/api/user-profile/${encodeURIComponent(userId)}`;
 const KNOWLEDGE_STATUS_ENDPOINT = (userId) => `${PROFILE_ENDPOINT(userId)}/knowledge-status`;
 const REVIEW_REMINDERS_ENDPOINT = (userId) => `${PROFILE_ENDPOINT(userId)}/review-reminders`;
+const MARK_REVIEWED_ENDPOINT = (userId) => `${PROFILE_ENDPOINT(userId)}/mark-reviewed`;
 const LEARNING_EVENTS_ENDPOINT = (userId) => `${PROFILE_ENDPOINT(userId)}/record-event`;
 
 export const LEARNING_EVENT_TYPES = Object.freeze({
@@ -777,6 +778,23 @@ export async function saveLearningEvent(userId, event) {
   return unwrapResponse(response);
 }
 
+export async function markReviewReminder(userId, reminderId, notes = '') {
+  const numericUserId = Number(userId);
+  const numericReminderId = Number(reminderId);
+  if (!Number.isInteger(numericUserId) || numericUserId < 1) {
+    throw new Error('标记复习需要登录用户 ID');
+  }
+  if (!Number.isInteger(numericReminderId) || numericReminderId < 1) {
+    throw new Error('复习提醒 ID 不合法');
+  }
+
+  const response = await post(MARK_REVIEWED_ENDPOINT(numericUserId), {
+    reminderId: numericReminderId,
+    notes: String(notes || '').slice(0, 500),
+  });
+  return unwrapResponse(response);
+}
+
 /**
  * 非阻塞记录课堂提问。M8 是形象层，事件按正式契约归属 M4。
  */
@@ -815,6 +833,7 @@ export async function recordQuestionContext({
 export default {
   getLearningProfile,
   getKnowledgePointDetail,
+  markReviewReminder,
   saveLearningEvent,
   recordQuestionContext,
 };

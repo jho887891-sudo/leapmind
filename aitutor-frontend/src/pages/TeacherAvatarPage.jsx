@@ -20,6 +20,7 @@ import {
 import VirtualTeacherViewer from '@/components/virtualTeacher/VirtualTeacherViewer.jsx';
 import {
   DEFAULT_TEACHER_AVATARS,
+  askVirtualTeacherQuestion,
   fetchTeacherAvatars,
   fetchTeacherPreference,
   saveTeacherPreference,
@@ -107,6 +108,7 @@ export default function TeacherAvatarPage({ onBack }) {
     { role: 'teacher', text: '我已经准备好讲解了。你可以先点“开始讲解”，也可以直接问一个问题。' },
   ]);
   const [speechState, setSpeechState] = useState('idle');
+  const [askState, setAskState] = useState('idle');
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showAvatarPanel, setShowAvatarPanel] = useState(false);
 
@@ -218,22 +220,40 @@ export default function TeacherAvatarPage({ onBack }) {
     speakText(script, '正在讲解：' + currentSlide.title);
   };
 
-  const handleAsk = () => {
+  const handleAsk = async () => {
+    if (askState === 'asking') return;
     const text = question.trim() || activeLesson.prompt;
-    const answer = `这个问题可以这样理解：${activeLesson.prompt} 关键是先判断概念边界，再用一个例子验证。你可以把它记成“先看条件，再看结论”。`;
     const user = getUserInfo();
+    setQuestion('');
+    setAskState('asking');
+    setMessages((prev) => [
+      ...prev,
+      { role: 'student', text },
+    ]);
     void recordQuestionContext({
       userId: user?.id ?? user?.userId ?? user?.uid,
       courseId: activeLesson.id,
       chapterId: currentSlide.id || `slide-${currentSlideIndex + 1}`,
     });
-    setQuestion('');
-    setMessages((prev) => [
-      ...prev,
-      { role: 'student', text },
-      { role: 'teacher', text: answer },
-    ]);
-    speakText(answer, '正在答疑');
+
+    try {
+      const response = await askVirtualTeacherQuestion({
+        courseId: activeLesson.id,
+        question: text,
+      });
+      setMessages((prev) => [
+        ...prev,
+        { role: 'teacher', text: response.answer },
+      ]);
+      void speakText(response.answer, '正在答疑');
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'system', text: error?.message || 'AI 教师暂时无法回答，请稍后重试。' },
+      ]);
+    } finally {
+      setAskState('idle');
+    }
   };
 
   return (
@@ -511,7 +531,7 @@ export default function TeacherAvatarPage({ onBack }) {
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') handleAsk();
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) handleAsk();
                 }}
                 placeholder={activeLesson.prompt}
                 className="min-w-0 flex-1 rounded-2xl border border-white/15 bg-white/[.08] px-4 py-3 text-sm text-white outline-none placeholder:text-purple-100/45 focus:border-cyan-300"
@@ -519,11 +539,11 @@ export default function TeacherAvatarPage({ onBack }) {
               <button
                 type="button"
                 onClick={handleAsk}
-                disabled={speechState === 'speaking'}
+                disabled={askState === 'asking'}
                 className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-300 text-indigo-950 transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-70"
                 aria-label="发送问题"
               >
-                <Send size={18} />
+                {askState === 'asking' ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
               </button>
             </div>
           </div>

@@ -387,6 +387,38 @@ aitutor-frontend/src/components/virtualTeacher/VirtualTeacherViewer.jsx
 - `/preference` 保存失败但非 401 时，偏好保存在本地浏览器，并提示“后端接口尚未连通”。
 - `/tts` 不可用时，页面保留 3D 教师动作演示，并在课堂互动消息中提示语音接口暂不可用。
 
+课堂互动已改为真实后端链路，不再由前端拼接固定答案：
+
+```http
+POST /api/voice-chat/ask
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "courseId": "limit",
+  "question": "为什么极限存在不要求函数在该点有定义？"
+}
+```
+
+成功响应：
+
+```json
+{
+  "answer": "AI 教师回答内容",
+  "courseId": "limit",
+  "status": "SUCCESS"
+}
+```
+
+用户提问同时通过 M6 正式事件接口记录为 `lecture_interact` / `M4` / `ask`，
+用于后续更新学习画像。M8 是形象与呈现层，因此事件归属 M4 讲课模块。
+
+登录对接注意事项：
+
+- Java 登录响应字段为 `data.userInfo`，前端兼容旧字段 `data.user`。
+- Java `expiresIn` 当前为毫秒，前端会归一化为秒后保存。
+- TTS 返回相对 `audioUrl` 时，前端会自动拼接 `VITE_API_BASE`；MinIO 预签名绝对地址直接使用。
+
 当前 M8 页面已包含：
 
 - VRM 3D 教师预览
@@ -396,4 +428,6 @@ aitutor-frontend/src/components/virtualTeacher/VirtualTeacherViewer.jsx
 - 教学内容展示
 - 开始讲解按钮
 - 课堂提问与教师反馈
+- `/api/voice-chat/ask` 真实 AI 答疑
+- M6 `record-event` 提问行为写入
 - TTS 语音合成调用与失败降级
