@@ -116,6 +116,13 @@ function statusFrom(value, mastery) {
     unmastered: 'weak',
     risky: 'weak',
     '\u8584\u5f31': 'weak',
+    // M6 backend masteryStatus values
+    basic_mastery: 'review',
+    consolidating: 'learning',
+    insufficient_evidence: 'weak',
+    available: 'learning',
+    empty: 'weak',
+    not_ready: 'weak',
   };
 
   if (aliases[status]) return aliases[status];
@@ -332,7 +339,7 @@ function normalizeSummary(source, fallback) {
     weeklyGoalProgress: percentage(pick(summary, ['weeklyGoalProgress', 'goalProgress'], fallback.weeklyGoalProgress), fallback.weeklyGoalProgress),
     completedCourses: numberValue(pick(summary, ['completedCourses', 'courseCount', 'finishedCourses'], fallback.completedCourses), fallback.completedCourses),
     completedExercises: numberValue(pick(summary, ['completedExercises', 'exerciseCount', 'questionCount'], fallback.completedExercises), fallback.completedExercises),
-    message: pick(summary, ['message', 'insight', 'suggestion', 'summaryText'], fallback.message),
+    message: pick(summary, ['message', 'insight', 'suggestion', 'summaryText', 'summaryProfile'], fallback.message),
   };
 }
 
@@ -369,6 +376,50 @@ function normalizeDimensions(source, fallback) {
   }));
 }
 
+/**
+ * 当后端未直接提供 dimensions 时，从 knowledge 列表派生雷达图维度。
+ */
+function deriveDimensionsFromKnowledge(source, knowledgeRaw, fallback) {
+  const dims = normalizeDimensions(source, fallback);
+  const hasRealDimensions = collectionFrom(source, ['dimensions', 'abilities', 'abilityDimensions', 'radarData']).length > 0;
+  if (hasRealDimensions) return dims;
+
+  if (!knowledgeRaw || !knowledgeRaw.length) return clone(fallback);
+
+  const total = knowledgeRaw.length;
+  const avgMastery = knowledgeRaw.reduce((sum, k) => sum + numberValue(pick(k, ['masteryScore', 'mastery', 'score'], 0), 0), 0) / total;
+  const avgConfidence = knowledgeRaw.reduce((sum, k) => sum + numberValue(pick(k, ['confidence', 'confidenceScore'], 0), 0), 0) / total;
+  const improvingCount = knowledgeRaw.filter((k) => String(pick(k, ['trend'], '')).toUpperCase() === 'IMPROVING').length;
+  const stableCount = knowledgeRaw.filter((k) => {
+    const t = String(pick(k, ['trend'], '')).toUpperCase();
+    return t === 'STABLE' || t === 'IMPROVING';
+  }).length;
+  const masteredCount = knowledgeRaw.filter((k) => {
+    const status = String(pick(k, ['masteryStatus', 'status'], '')).toUpperCase();
+    return status === 'MASTERED' || status === 'BASIC_MASTERY';
+  }).length;
+  const totalEvidence = knowledgeRaw.reduce((sum, k) => sum + numberValue(pick(k, ['evidenceCount'], 0), 0), 0);
+
+  return [
+    { key: 'mastery', label: '\u77e5\u8bc6\u638c\u63e1', value: Math.round(avgMastery * 100), max: 100 },
+    { key: 'confidence', label: '\u638c\u63e1\u4fe1\u5fc3', value: Math.round(avgConfidence * 100), max: 100 },
+    { key: 'progress', label: '\u8fdb\u6b65\u8d8b\u52bf', value: Math.round(improvingCount / total * 100), max: 100 },
+    { key: 'engagement', label: '\u5b66\u4e60\u6295\u5165', value: Math.min(100, Math.round(totalEvidence / total * 5)), max: 100 },
+    { key: 'coverage', label: '\u77e5\u8bc6\u8986\u76d6', value: Math.round(masteredCount / total * 100), max: 100 },
+    { key: 'stability', label: '\u638c\u63e1\u7a33\u5b9a', value: Math.round(stableCount / total * 100), max: 100 },
+  ];
+}
+
+function trendNumber(value) {
+  if (typeof value === 'string') {
+    const upper = value.toUpperCase();
+    if (upper === 'IMPROVING') return 5;
+    if (upper === 'DECLINING') return -5;
+    if (upper === 'STABLE') return 0;
+  }
+  return numberValue(value, 0);
+}
+
 function normalizeKnowledgeNode(item, index, fallbackSubject = '') {
   const mastery = masteryPercentage(pick(item, ['mastery', 'masteryScore', 'masteryRate', 'score', 'progress', 'value'], 0));
   const children = collectionFrom(item, ['children', 'knowledgePoints', 'nodes', 'items']);
@@ -381,8 +432,8 @@ function normalizeKnowledgeNode(item, index, fallbackSubject = '') {
     name,
     subject,
     mastery,
-    status: statusFrom(pick(item, ['status', 'masteryStatus', 'state'], ''), mastery),
-    trend: numberValue(pick(item, ['trend', 'change', 'masteryChange'], 0)),
+    status: statusFrom(pick(item, ['masteryStatus', 'status', 'state'], ''), mastery),
+    trend: trendNumber(pick(item, ['trend', 'change', 'masteryChange'], 0)),
     type: pick(item, ['type', 'nodeType'], children.length ? 'subject' : 'knowledgePoint'),
     parentId: pick(item, ['parentId', 'parentKnowledgeId'], null),
     children: children.map((child, childIndex) => normalizeKnowledgeNode(child, childIndex, subject)),
@@ -429,6 +480,82 @@ function normalizeKnowledgeTree(source, fallback) {
     parentId: null,
     children,
   }));
+}
+
+/**
+ * 当后端未直接提供 summary 时，从 knowledge 列表和 profile 字段派生摘要。
+ */
+function deriveSummaryFromProfile(source, knowledgeRaw, fallback) {
+  const summary = normalizeSummary(source, fallback);
+
+  if (knowledgeRaw && knowledgeRaw.length) {
+    const avgMastery = knowledgeRaw.reduce((sum, k) => sum + numberValue(pick(k, ['masteryScore', 'mastery', 'score'], 0), 0), 0) / knowledgeRaw.length;
+    if (avgMastery > 0) summary.overallMastery = Math.round(avgMastery * 100);
+
+    const totalEvidence = knowledgeRaw.reduce((sum, k) => sum + numberValue(pick(k, ['evidenceCount'], 0), 0), 0);
+    if (totalEvidence > 0) summary.completedExercises = totalEvidence;
+  }
+
+  if (source.summaryProfile && summary.message === fallback.message) {
+    summary.message = source.summaryProfile;
+  }
+
+  return summary;
+}
+
+/**
+ * 当后端未直接提供 timeline 时，从 recentConfusions 和 recentFocus 派生学习轨迹。
+ */
+function deriveTimelineFromProfile(source, fallback) {
+  const existing = collectionFrom(source, ['timeline', 'learningTimeline', 'recentActivities', 'activities', 'learningRecords']);
+  if (existing.length) return normalizeTimeline(source, fallback);
+
+  const confusions = collectionFrom(source, ['recentConfusions', 'confusions', 'confusionPoints'], []);
+  const focus = collectionFrom(source, ['recentFocus', 'focusPoints', 'focus'], []);
+
+  const entries = [];
+
+  confusions.forEach((item, index) => {
+    const kpId = pick(item, ['kpId', 'knowledgePointId', 'pointId'], `kp-${index}`);
+    const detail = pick(item, ['detail', 'description', 'content'], '');
+    const time = pick(item, ['lastOccurredAt', 'occurredAt', 'time', 'date'], '');
+    entries.push({
+      id: `confusion-${kpId}-${index}`,
+      type: 'review',
+      title: `\u77e5\u8bc6\u70b9 ${kpId} \u56f0\u60d1\u53cd\u9988`,
+      description: detail || '\u8fd1\u671f\u5b66\u4e60\u4e2d\u51fa\u73b0\u4e86\u56f0\u60d1',
+      subject: '',
+      score: null,
+      time,
+    });
+  });
+
+  focus.forEach((item, index) => {
+    const kpId = pick(item, ['kpId', 'knowledgePointId', 'pointId'], `kp-${index}`);
+    entries.push({
+      id: `focus-${kpId}-${index}`,
+      type: 'course',
+      title: `\u5173\u6ce8\u77e5\u8bc6\u70b9 ${kpId}`,
+      description: '\u8fd1\u671f\u91cd\u70b9\u5b66\u4e60\u7684\u5185\u5bb9',
+      subject: '',
+      score: null,
+      time: '',
+    });
+  });
+
+  if (source.computedAt) {
+    entries.push({
+      id: 'profile-computed',
+      type: 'milestone',
+      title: '\u753b\u50cf\u66f4\u65b0\u5b8c\u6210',
+      description: '\u5b66\u4e60\u753b\u50cf\u5df2\u91cd\u65b0\u8ba1\u7b97',
+      subject: '',
+      score: null,
+      time: source.computedAt,
+    });
+  }
+
+  return entries.length ? entries : clone(fallback);
 }
 
 function normalizeTimeline(source, fallback) {
@@ -533,23 +660,40 @@ export async function getLearningProfile(userId) {
 
   const profileSource = resultPayload(profileResult);
   const reminderSource = resultPayload(reminderResult);
-  const profileReady = ['READY', 'STALE'].includes(String(profileSource?.profileStatus || '').toUpperCase());
-  const isDemo = !requestSucceeded(profileResult)
-    || !profileReady
-    || !requestSucceeded(reminderResult);
+  const profileStatus = String(profileSource?.profileStatus || '').toUpperCase();
+  const profileReady = ['READY', 'STALE'].includes(profileStatus);
 
+  // 后端返回 NOT_READY：画像正在构建中，返回构建中状态而非 demo 数据
+  if (profileSource && !profileReady && profileStatus === 'NOT_READY') {
+    return {
+      ...demo,
+      isDemo: true,
+      isNotReady: true,
+      demoReason: '\u5b66\u4e60\u753b\u50cf\u6b63\u5728\u6784\u5efa\u4e2d\uff0c\u8bf7\u7a0d\u540e\u518d\u6765\u67e5\u770b\u3002',
+      statusReason: profileSource?.statusReason || 'NO_PROFILE',
+    };
+  }
+
+  // 画像请求失败：回退到 demo 数据
   if (!profileSource && !reminderSource) return demo;
 
-  const summary = normalizeSummary(profileSource || {}, demo.summary);
+  // 提取后端 knowledge 列表用于派生其他字段
+  const knowledgeRaw = collectionFrom(profileSource || {}, ['knowledge', 'knowledgeStatus', 'knowledgeStatuses', 'knowledgePoints', 'records', 'list', 'items']);
+
+  // isDemo 仅在画像请求失败或未就绪时为 true，复习提醒失败不影响
+  const isDemo = !requestSucceeded(profileResult) || !profileReady;
+
+  const summary = deriveSummaryFromProfile(profileSource || {}, knowledgeRaw, demo.summary);
   return {
     isDemo,
+    isNotReady: false,
     demoReason: isDemo ? demo.demoReason : null,
     user: normalizeUser(profileSource || {}, demo.user),
     summary,
     stats: normalizeStats(profileSource || {}, summary, demo.stats),
-    dimensions: normalizeDimensions(profileSource || {}, demo.dimensions),
+    dimensions: deriveDimensionsFromKnowledge(profileSource || {}, knowledgeRaw, demo.dimensions),
     knowledgeTree: normalizeKnowledgeTree(profileSource || {}, demo.knowledgeTree),
-    timeline: normalizeTimeline(profileSource || {}, demo.timeline),
+    timeline: deriveTimelineFromProfile(profileSource || {}, demo.timeline),
     reminders: normalizeReminders(reminderSource || profileSource || {}, demo.reminders),
     preferences: normalizePreferences(profileSource || {}, demo.preferences),
   };
@@ -713,22 +857,37 @@ export async function getKnowledgePointDetail(userId, knowledgePointId) {
   const knowledgeSource = resultPayload(knowledgeResult);
   const reminderSource = resultPayload(reminderResult);
   const pointSource = findKnowledgePoint(knowledgeSource, normalizedPointId);
-  const isDemo = !pointSource || !requestSucceeded(knowledgeResult) || !requestSucceeded(reminderResult);
 
-  if (!pointSource) return demo;
+  // 后端返回 NOT_READY 或知识点不存在时，返回带标记的 demo 数据
+  if (!pointSource) {
+    const profileStatus = String(knowledgeSource?.profileStatus || '').toUpperCase();
+    if (profileStatus === 'NOT_READY') {
+      return { ...demo, isNotReady: true, demoReason: '\u5b66\u4e60\u753b\u50cf\u6b63\u5728\u6784\u5efa\u4e2d\u3002' };
+    }
+    return demo;
+  }
 
   const mastery = masteryPercentage(pick(pointSource, ['mastery', 'masteryScore', 'masteryRate', 'score', 'progress'], demo.mastery), demo.mastery);
+  const isDemo = !requestSucceeded(knowledgeResult);
+  const evidenceCount = numberValue(pick(pointSource, ['evidenceCount'], 0), 0);
+
   return {
     isDemo,
+    isNotReady: false,
     demoReason: isDemo ? demo.demoReason : null,
     id: String(pick(pointSource, ['id', 'kpId', 'knowledgePointId', 'pointId', 'knowledgeId'], normalizedPointId)),
     name: pick(pointSource, ['name', 'knowledgePointName', 'pointName', 'title'], demo.name),
     subject: pick(pointSource, ['subject', 'subjectName', 'courseName'], demo.subject),
     mastery,
-    status: statusFrom(pick(pointSource, ['status', 'masteryStatus', 'state'], ''), mastery),
+    status: statusFrom(pick(pointSource, ['masteryStatus', 'status', 'state'], ''), mastery),
     trend: normalizeTrend(pointSource, demo.trend),
     description: pick(pointSource, ['description', 'content', 'introduction', 'summary'], demo.description),
-    metrics: normalizeMetrics(pointSource, demo.metrics),
+    metrics: {
+      ...normalizeMetrics(pointSource, demo.metrics),
+      exercises: evidenceCount || normalizeMetrics(pointSource, demo.metrics).exercises,
+      correctCount: evidenceCount > 0 ? Math.round(evidenceCount * mastery / 100) : normalizeMetrics(pointSource, demo.metrics).correctCount,
+      wrongCount: evidenceCount > 0 ? evidenceCount - Math.round(evidenceCount * mastery / 100) : normalizeMetrics(pointSource, demo.metrics).wrongCount,
+    },
     prerequisites: normalizePrerequisites(pointSource, demo.prerequisites),
     history: normalizeHistory(pointSource, demo.history),
     reviewPlan: normalizeReviewPlan(pointSource, reminderSource || {}, normalizedPointId, demo.reviewPlan),

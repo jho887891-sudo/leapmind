@@ -7,7 +7,6 @@ import {
   Clock3,
   Flame,
   RefreshCw,
-  Sparkles,
   Target,
   TrendingUp,
 } from 'lucide-react'
@@ -136,7 +135,6 @@ export default function LearningProfilePage({ onBack, onOpenKnowledgePoint }) {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-purple-200/75">LeapMind · M6</div>
               <h1 className="text-xl font-bold sm:text-2xl">我的学习档案</h1>
             </div>
           </div>
@@ -152,10 +150,10 @@ export default function LearningProfilePage({ onBack, onOpenKnowledgePoint }) {
       </header>
 
       <div className="mx-auto max-w-7xl space-y-6 px-5 py-7 lg:px-8 lg:py-9">
-        {profile.isDemo && (
-          <div className="flex items-start gap-3 rounded-2xl border border-amber-200/30 bg-[#4210A5]/60 px-4 py-3 text-sm text-amber-50/90 shadow-lg backdrop-blur-md">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" />
-            <span>当前展示的是联调示例数据；M6 后端接口可用后会自动展示你的真实学习记录。</span>
+        {profile.isNotReady && (
+          <div className="flex items-start gap-3 rounded-2xl border border-cyan-200/30 bg-[#4210A5]/60 px-4 py-3 text-sm text-cyan-50/90 shadow-lg backdrop-blur-md">
+            <BrainCircuit className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" />
+            <span>学习画像正在构建中，系统会在你产生更多学习行为后自动生成。请完成一些练习或听讲后再来查看。</span>
           </div>
         )}
 
@@ -164,7 +162,6 @@ export default function LearningProfilePage({ onBack, onOpenKnowledgePoint }) {
           <div className="relative grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <span className="rounded-full bg-violet-300/15 px-3 py-1 text-xs font-semibold text-violet-100 ring-1 ring-violet-200/20">持续学习画像</span>
                 {profile.user?.major && <span className="text-sm text-white/55">{profile.user.major}</span>}
               </div>
               <h2 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">{displayName}，继续保持你的节奏</h2>

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   BookMarked,
+  BrainCircuit,
   CheckCircle2,
   ChevronRight,
   CircleDot,
@@ -135,7 +136,8 @@ export default function KnowledgePointDetailPage({ knowledgePointId, onBack, onH
         <div className="mx-auto grid min-h-[70vh] max-w-md place-items-center px-6 text-center"><div className="rounded-3xl border border-purple-300/30 bg-[#4210A5]/70 p-8 shadow-2xl backdrop-blur-lg"><Target className="mx-auto h-12 w-12 text-rose-200" /><h2 className="mt-4 text-2xl font-bold">详情加载失败</h2><p className="mt-2 text-white/55">{error}</p><button type="button" onClick={loadDetail} className="mt-5 rounded-full bg-gradient-to-r from-[#A286FF] to-[#638AFF] px-5 py-2 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl">重新加载</button></div></div>
       ) : (
         <div className="mx-auto max-w-6xl space-y-6 px-5 py-7 lg:px-8 lg:py-9">
-          {detail.isDemo && <div className="flex gap-3 rounded-2xl border border-amber-200/30 bg-[#4210A5]/60 px-4 py-3 text-sm text-amber-50/90 shadow-lg backdrop-blur-md"><Sparkles className="h-4 w-4 shrink-0 text-amber-200" />联调示例数据，后端知识掌握度接口可用后将自动替换。</div>}
+          {detail.isNotReady && <div className="flex gap-3 rounded-2xl border border-cyan-200/30 bg-[#4210A5]/60 px-4 py-3 text-sm text-cyan-50/90 shadow-lg backdrop-blur-md"><BrainCircuit className="h-4 w-4 shrink-0 text-cyan-200" />学习画像正在构建中，知识点详情暂不可用。请先完成一些练习再回来查看。</div>}
+          {detail.isDemo && !detail.isNotReady && <div className="flex gap-3 rounded-2xl border border-amber-200/30 bg-[#4210A5]/60 px-4 py-3 text-sm text-amber-50/90 shadow-lg backdrop-blur-md"><Sparkles className="h-4 w-4 shrink-0 text-amber-200" />联调示例数据，后端知识掌握度接口可用后将自动替换。</div>}
 
           <section className="grid items-center gap-7 overflow-hidden rounded-3xl border border-purple-500/20 bg-gradient-to-b from-purple-900/40 to-purple-800/20 p-6 shadow-2xl backdrop-blur-md sm:p-8 lg:grid-cols-[1fr_auto]">
             <div>
